@@ -97,7 +97,7 @@ These selections dynamically update all analysis pages.
 
 The system follows a data-driven pipeline:
 
-![TxPWC code pipeline](resources/content/images/txpwc_code_pipeline.png)
+![TxPWC code pipeline](https://github.com/spark-hydro/txpwc-interactive-dashboard/blob/main/resources/content/images/txpwc_code_pipeline.png)
 
 1. Data ingestion  
    - Observed data (CSV)  
