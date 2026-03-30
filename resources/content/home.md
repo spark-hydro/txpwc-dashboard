@@ -101,6 +101,8 @@ The system follows a data-driven pipeline:
 <p align="center"><img src="https://github.com/spark-brc/crb_apexmf/blob/main/resources/watershed/Animas (calibrated)/description/ani_model_inputs.png?raw=true" width="1000"></p>
 *Figure 2. Maps of simulation results from the steady-state MODFLOW model* 
 
+0. okay
+
 1. Data ingestion  
    - Observed data (CSV)  
    - Simulated outputs (Parquet)  
