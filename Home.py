@@ -17,7 +17,11 @@ st.set_page_config(
 context = render_sidebar()
 
 st.title("Home")
-st.markdown(safe_markdown_read(CONTENT_DIR / "home.md"))
+# st.markdown(safe_markdown_read(CONTENT_DIR / "home.md"))
+def read_markdown_file(markdown_file):
+    return Path(markdown_file).read_text()
+
+st.markdown(read_markdown_file(CONTENT_DIR / "home.md"),  unsafe_allow_html=True)
 
 st.subheader("Current selection")
 st.write(
@@ -28,10 +32,6 @@ st.write(
     }
 )
 
-def read_markdown_file(markdown_file):
-    return Path(markdown_file).read_text()
-
-st.markdown(read_markdown_file(CONTENT_DIR / "home.md"),  unsafe_allow_html=True)
 
 
 # st.title(APP_TITLE)
