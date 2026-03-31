@@ -15,7 +15,7 @@ The consortium is led by Texas Tech University and brings together a diverse gro
 - Consulting and industry partners  
 
 Legislative reports:
-- 2022 Report  
+- [2022 Report](https://www.depts.ttu.edu/research/tx-water-consortium/2022-report.php)  
 - [2024 Report](https://www.depts.ttu.edu/research/tx-water-consortium/TXPWCFINALDRAFT.pdf)  
 
 ---
