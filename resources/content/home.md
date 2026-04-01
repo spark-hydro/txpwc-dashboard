@@ -16,7 +16,8 @@ The consortium is led by Texas Tech University and brings together a diverse gro
 - Government agencies  
 - Consulting and industry partners  
 
-Legislative reports:
+### Legislative reports:
+
 - [2022 Report](https://www.depts.ttu.edu/research/tx-water-consortium/2022-report.php)  
 - [2024 Report](https://www.depts.ttu.edu/research/tx-water-consortium/TXPWCFINALDRAFT.pdf)  
 
@@ -26,7 +27,7 @@ Legislative reports:
 
 Texas faces increasing water demand and supply challenges:
 
-- **Statewide demand (2020–2030):** ~18 million acre-feet/year  
+- **Statewide demand (2020 - 2030):** ~18 million acre-feet/year  
 - **Projected additional needs:**
   - 4.8 million acre-feet/year by 2030  
   - 6.9 million acre-feet/year by 2070  
@@ -49,18 +50,19 @@ Key objectives:
 
 ---
 
-## Dashboard Purpose
+### Dashboard Purpose
 
 This dashboard provides an interactive platform to explore model results and data for the TxPWC project.
 
 It integrates:
 - Observed data (e.g., USGS streamflow)  
 - Simulated outputs (e.g., SWAT+ / SWAT+ gwflow)  
-- Spatial datasets (subbasins, stations, release points)  
+- Spatial datasets (subbasins, stations, release points)
+- Scenario-based model outputs  
 
 ---
 
-## How to Use This Dashboard
+### How to Use this Dashboard
 
 Use the **Analysis Settings** in the sidebar to control:
 
@@ -75,57 +77,66 @@ These selections dynamically update all analysis pages.
 ## Pages Overview
 
 ### Model Info
+
 - Model structure and components  
 - Input datasets and preprocessing  
 - Calibration approach and parameters  
 
 ### Model Performance
+
 - Comparison of observed vs simulated data  
 - Performance metrics (e.g., NSE, RMSE)  
 - Spatial visualization by subbasin  
 
 ### Hydrology
+
 - Historical streamflow and climate data  
 - Hydrologic trends and variability  
 
 ### Water Quality
+
 - Salinity and key water quality indicators  
 - Transport and mixing behavior  
 
 ### Scenarios
+
 - Produced water release configurations  
 - Spatial distribution of release points  
 - Scenario-based model outputs  
 
+
+### Data-Driven Analysis (Machine Learning)
+
+- Surrogate modeling to emulate SWAT+gwflow outputs for rapid scenario evaluation and interactive analysis
+- Residual learning to correct model errors and improve accuracy without modifying the physical model
+- Spatiotemporal prediction to capture flow and salinity dynamics under varying climate and release conditions
+- Feature importance analysis to identify key drivers of hydrologic and water quality responses
+-  Scenario risk classification to predict threshold exceedance and assess risk under different release strategies
+
 ---
 
-## Modeling Framework (High-Level)
+
+## Dashboard Code Pipeline
 
 The system follows a data-driven pipeline:
 <p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/txpwc_code_pipeline.png?raw=true" width="1000"></p>
 
 *Figure 2. Maps of simulation results from the steady-state MODFLOW model* 
 
-1. Data ingestion  
-   - Observed data (CSV)  
-   - Simulated outputs (Parquet)  
+### 1. Data ingestion
 
-2. Data processing  
-   - Station matching  
-   - Variable selection  
-   - Time-series alignment  
+- Observed data (CSV)  
+- Simulated outputs (Parquet)  
 
-3. Visualization  
-   - Interactive maps (subbasins, stations)  
-   - Time-series plots  
-   - Performance metrics  
+### 2. Data processing  
 
----
+- Station matching  
+- Variable selection  
+- Time-series alignment  
 
-## Notes
+### 3. Visualization  
 
-- The Home page provides project context and does not change with basin selection  
-- All other pages respond to **Analysis Settings**  
-- This dashboard is under active development  
+- Interactive maps (subbasins, stations)  
+- Time-series plots  
+- Performance metrics  
 
----
