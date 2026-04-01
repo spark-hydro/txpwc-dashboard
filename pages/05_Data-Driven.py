@@ -1,25 +1,33 @@
+import re
+from pathlib import Path
+
 import streamlit as st
 
 from components.sidebar import render_sidebar
+from config.settings import APP_ICON, APP_TITLE
+from core.utils.content import load_model_info, get_model_info_path
+from core.utils.page_content import build_outline_and_html, render_floating_outline
+from core.utils.content import load_data_driven, get_data_driven_path
 
+# Page config
+st.set_page_config(
+    page_title=f"{APP_TITLE} | Data-Driven",
+    page_icon=APP_ICON,
+    layout="wide",
+)
+
+# Sidebar selections
 context = render_sidebar()
 
-st.title("Scenarios")
-st.markdown(
-    """
-    This page is reserved for future scenario analysis workflows such as:
+# Load markdown text and actual file path
+md_file_path = get_data_driven_path(context.basin_id, context.model_type)
+md_text = load_data_driven(context.basin_id, context.model_type)
 
-    - baseline vs treated produced-water release
-    - alternative discharge timing or rates
-    - climate or drought sensitivity
-    - uncertainty envelopes
-    """
-)
+# Build outline + rendered markdown/html
+toc, rendered_md = build_outline_and_html(md_text, md_file_path)
 
-st.write(
-    {
-        "active_basin": context.basin_id,
-        "active_model": context.model_type,
-        "active_scenario": context.scenario_id,
-    }
-)
+# Show floating outline
+st.html(render_floating_outline(toc))
+
+# Render content
+st.markdown(rendered_md, unsafe_allow_html=True)

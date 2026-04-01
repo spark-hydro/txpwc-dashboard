@@ -1,22 +1,33 @@
+import re
+from pathlib import Path
+
 import streamlit as st
 
 from components.sidebar import render_sidebar
+from config.settings import APP_ICON, APP_TITLE
+from core.utils.content import load_water_quality, get_water_quality_path
+from core.utils.page_content import build_outline_and_html, render_floating_outline
 
+
+# Page config
+st.set_page_config(
+    page_title=f"{APP_TITLE} | Water Quality",
+    page_icon=APP_ICON,
+    layout="wide",
+)
+
+# Sidebar selections
 context = render_sidebar()
 
-st.title("Water Quality")
-st.markdown(
-    """
-    Planned content for this page:
+# Load markdown text and actual file path
+md_file_path = get_water_quality_path(context.basin_id, context.model_type)
+md_text = load_water_quality(context.basin_id, context.model_type)
 
-    - salinity and constituent transport
-    - produced-water quality indicators
-    - concentration / load comparisons
-    - spatial summaries by subbasin or receiving stream segment
-    """
-)
+# Build outline + rendered markdown/html
+toc, rendered_md = build_outline_and_html(md_text, md_file_path)
 
-st.info(
-    f"Water quality modules are not yet wired in for basin `{context.basin_id}` "
-    f"and scenario `{context.scenario_id}`."
-)
+# Show floating outline
+st.html(render_floating_outline(toc))
+
+# Render content
+st.markdown(rendered_md, unsafe_allow_html=True)

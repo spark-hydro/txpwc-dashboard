@@ -73,7 +73,7 @@ def build_outline_and_html(md_text: str):
 
     return toc, "\n".join(html_lines)
 
-
+#
 # -----------------------------
 # Load and process markdown
 # -----------------------------

@@ -12,6 +12,13 @@
     "scenarios": ["baseline", "alt_release"],
     "description": "Pecos River Watershed in Texas and New Mexico, USA",
     "observed_data": "data_dailyvalues_Pecos.csv"
+  },
+  "Animas": {
+    "label": "Animas River Watershed",
+    "model_types": ["AMRS"],
+    "scenarios": ["baseline", "alt_release"],
+    "description": "Animas River Watershed in Colorado, USA",
+    "observed_data": "data_dailyvalues_Animas.csv"
   }
   }
 }

@@ -1,23 +1,36 @@
+import re
+from pathlib import Path
+
 import streamlit as st
 
 from components.sidebar import render_sidebar
-from core.services.performance_service import load_performance_bundle
+from config.settings import APP_ICON, APP_TITLE
+from core.utils.content import load_hydrology, get_hydrology_path
+from core.utils.page_content import build_outline_and_html, render_floating_outline
 
-context = render_sidebar()
-bundle = load_performance_bundle(context)
 
-st.title("Hydrology")
-st.markdown(
-    """
-    This page is a placeholder for future hydrology-specific views such as:
 
-    - baseflow indicators
-    - low-flow diagnostics
-    - seasonal hydrograph comparisons
-    - event windows
-    - water budget summaries
-    """
+
+
+# Page config
+st.set_page_config(
+    page_title=f"{APP_TITLE} | Hydrology",
+    page_icon=APP_ICON,
+    layout="wide",
 )
 
-st.subheader("Available streamflow columns")
-st.write(list(bundle.streamflow_joined.columns))
+# Sidebar selections
+context = render_sidebar()
+
+# Load markdown text and actual file path
+md_file_path = get_hydrology_path(context.basin_id, context.model_type)
+md_text = load_hydrology(context.basin_id, context.model_type)
+
+# Build outline + rendered markdown/html
+toc, rendered_md = build_outline_and_html(md_text, md_file_path)
+
+# Show floating outline
+st.html(render_floating_outline(toc))
+
+# Render content
+st.markdown(rendered_md, unsafe_allow_html=True)
