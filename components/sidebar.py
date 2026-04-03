@@ -97,7 +97,7 @@ def render_sidebar() -> AppContext:
                     <img src="data:image/png;base64,{get_base64_image('assets/logos/water_center.png')}" 
                         style="width:160px;">
                 </a>
-                <a href="https://ihydro.github.io/" target="_blank">
+                <a href="https://spark-hydro.github.io/" target="_blank">
                     <img src="data:image/png;base64,{get_base64_image('assets/logos/ihydro_lab.png')}" 
                         style="width:80px;">
                 </a>
