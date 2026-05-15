@@ -1,6 +1,23 @@
+# Core app
 streamlit>=1.40
+
+# Data processing
 pandas>=2.0
 numpy>=1.24
+
+# Visualization
 plotly>=5.20
+folium>=0.15
+streamlit-folium>=0.20
+
+# Geospatial
+geopandas>=0.14
+
+# Scientific
+scipy>=1.10
+
+# Utilities
 pyyaml>=6.0
+
+# Streamlit extensions
 streamlit-plotly-events>=0.0.6
