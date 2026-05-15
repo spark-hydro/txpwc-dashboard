@@ -1,0 +1,17 @@
+name: txpwc-dashboard
+channels:
+  - conda-forge
+dependencies:
+  - python=3.14
+  - pip
+  - pip:
+      - streamlit>=1.40
+      - pandas>=2.0
+      - numpy>=1.24
+      - plotly>=5.20
+      - folium>=0.15
+      - streamlit-folium>=0.20
+      - geopandas>=0.14
+      - scipy>=1.10
+      - pyyaml>=6.0
+      - streamlit-plotly-events>=0.0.6
