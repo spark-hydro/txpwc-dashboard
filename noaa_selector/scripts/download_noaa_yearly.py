@@ -1,19 +1,29 @@
 import requests
 import pandas as pd
 
-# ⭐ TOKEN HARDCODEADO (igual que en tu script original)
-TOKEN = "CHSymOnkMgrHkRUcybaxSZEAVEFQUgmq"
 
-def download_noaa_yearly(station_id, start_year, end_year):
+def download_noaa_yearly(station_id: str, start_year: int, end_year: int,
+                          token: str = "") -> pd.DataFrame:
     """
-    Descarga datos NOAA GHCND año por año (PRCP, TMAX, TMIN).
-    Usa el token HARDCODEADO para asegurar que NOAA responda igual que en tu script original.
+    Download NOAA GHCND daily data (PRCP, TMAX, TMIN) year by year.
+
+    Parameters
+    ----------
+    station_id : str   e.g. "GHCND:USW00023050"
+    start_year : int
+    end_year   : int
+    token      : str   NOAA CDO API token (https://www.ncdc.noaa.gov/cdo-web/token)
+                       Falls back to the project token if empty — replace with your own.
     """
 
-    url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-    headers = {"token": TOKEN}
+    # ── Token resolution ──────────────────────────────────────────────────────
+    # If the caller passes a token (from the Streamlit UI), use it.
+    # Otherwise fall back to the project token so existing scripts keep working.
+    _token = token.strip() if token and token.strip() else "CHSymOnkMgrHkRUcybaxSZEAVEFQUgmq"
 
-    frames = []
+    url     = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
+    headers = {"token": _token}
+    frames  = []
 
     for year in range(start_year, end_year + 1):
 
@@ -21,21 +31,18 @@ def download_noaa_yearly(station_id, start_year, end_year):
             "datasetid": "GHCND",
             "stationid": station_id,
             "startdate": f"{year}-01-01",
-            "enddate": f"{year}-12-31",
-            "limit": 1000,
-            "units": "metric"
+            "enddate":   f"{year}-12-31",
+            "limit":     1000,
+            "units":     "metric",
         }
-
         offset = 1
 
         while True:
             params["offset"] = offset
-            r = requests.get(url, params=params, headers=headers)
-
-            # NOAA sometimes returns HTML → skip safely
             try:
+                r    = requests.get(url, params=params, headers=headers, timeout=30)
                 data = r.json()
-            except:
+            except Exception:
                 break
 
             if "results" not in data:
@@ -53,17 +60,15 @@ def download_noaa_yearly(station_id, start_year, end_year):
 
     df = pd.concat(frames, ignore_index=True)
 
-    # Pivot to wide format
+    # Pivot to wide format: one row per date, one column per datatype
     df = df.pivot_table(
-        index="date",
-        columns="datatype",
-        values="value",
-        aggfunc="first"
+        index="date", columns="datatype",
+        values="value", aggfunc="first"
     ).reset_index()
 
     df.rename(columns={"date": "DATE"}, inplace=True)
 
-    # Ensure columns exist
+    # Guarantee columns exist even if NOAA returned no data for that variable
     for col in ["PRCP", "TMAX", "TMIN"]:
         if col not in df.columns:
             df[col] = None
