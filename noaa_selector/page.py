@@ -1105,7 +1105,7 @@ def run_app():
             st.markdown(T("### 🔵 SPI — Standardized Precipitation Index",
                           "### 🔵 SPI — Índice Estandarizado de Precipitación"))
 
-            annual_spi = df_all.groupby(["year","DATE"])["PRCP"].mean() \
+            annual_spi = df_all[df_all["year"] >= 2000].groupby(["year","DATE"])["PRCP"].mean() \
                                 .groupby("year").sum().reset_index()
             mean_p = annual_spi["PRCP"].mean()
             std_p  = annual_spi["PRCP"].std()
@@ -1143,7 +1143,7 @@ def run_app():
                 "### 🟣 SPEI — Índice Estandarizado de Precipitación-Evapotranspiración"
             ))
 
-            df_spei        = df_all.copy()
+            df_spei        = df_all[df_all["year"] >= 2000].copy()
             df_spei["TMEAN"] = (df_spei["TMAX"] + df_spei["TMIN"]) / 2
             df_spei["month"] = df_spei["DATE"].dt.month
 
