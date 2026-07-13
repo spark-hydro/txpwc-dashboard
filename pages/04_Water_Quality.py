@@ -106,7 +106,7 @@ if context.basin_id == "Pecos":
 # full speed without loading the Streamlit server. An <iframe> cannot be injected
 # through the markdown above (st.markdown strips it), so it is embedded here.
 INTERACTIVE_LABS = {
-    "Pecos": "https://josephauresy.github.io/pecos-pfas-lab/",
+    "Pecos": "https://josephauresy.github.io/pecos-salinity-lab/",
 }
 
 lab_url = INTERACTIVE_LABS.get(context.basin_id)
