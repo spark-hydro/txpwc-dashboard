@@ -112,11 +112,11 @@ INTERACTIVE_LABS = {
 lab_url = INTERACTIVE_LABS.get(context.basin_id)
 if lab_url:
     st.divider()
-    st.subheader("Interactive lab — PFAS vs. salinity transport")
+    st.subheader("Interactive lab — Salinity transport")
     st.link_button("↗ Open the lab in full screen", lab_url, use_container_width=True)
     components.iframe(lab_url, height=1000, scrolling=True)
     st.caption(
         "Source: Texas Produced Water Consortium, *Produced Water Treatment Pilot "
         "Testing: Water Quality Report*, April 2026. Conceptual 2-D teaching model "
-        "(SWAT+/gwflow + USGT-PFAS physics), not a calibrated MODFLOW-USG run."
+        "(SWAT+/gwflow salinity-transport physics), not a calibrated MODFLOW-USG run."
     )
