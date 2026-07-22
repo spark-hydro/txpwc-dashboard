@@ -1,56 +1,26 @@
 # Water Quality
 
-## Overview
+The Pecos Basin TxPWC application evaluates **salinity and trace-constituent transport** after a treated produced-water return to the Pecos River near Red Bluff Reservoir.
 
-This page summarizes the main water quality focus of the Pecos River TxPWC application, with emphasis on salinity, constituent transport, and the hydrologic controls that influence water quality response after purified produced water release.
+- **Model**: SWAT+/gwflow coupled watershed–groundwater (Pecos Basin)
+- **Data**: TxPWC Pilot Testing Report (April 2026) — concentrations anchored to measured values across three treatment stages
+- **Contaminants tracked**: TDS (conservative), NH₃ (reactive / nitrification), PFAS (strongly retarded by vadose air–water interface adsorption)
 
-The current modeling framework is designed to evaluate how water quality conditions change across space and time under baseline and alternative release scenarios.
+## Interactive Contaminant-Transport Lab
 
-## Why Water Quality Matters
+An interactive teaching lab (embedded below) lets you explore how contaminants from a **treated produced-water return** move differently through a Pecos-Basin aquifer toward the Pecos River near Red Bluff Reservoir:
 
-Water quality is a central part of the TxPWC project because beneficial reuse decisions require not only hydrologic feasibility, but also protection of stream systems, groundwater systems, and downstream users.
+- **Salinity (TDS / Cl⁻ / Na⁺)** — *conservative*: travels with the groundwater (R = 1).
+- **PFAS** — *strongly retarded*: trapped on **air–water interfaces** in the unsaturated zone (R ≈ 10–100×), so it lags far behind the salt front.
+- **Ammonia (NH₃)** — the residual flagged in the TxPWC pilot report as the key concern for surface-water discharge.
 
-Key questions include:
+### How to Use the Lab
 
-- How much dilution occurs after release?
-- How far do salinity signals travel downstream?
-- How do hydrologic conditions affect transport and mixing?
-- Where are the most sensitive reaches and risk zones?
+1. **Pick a scenario** (top-right of the lab): Baseline, PFAS Legacy, Drought, or Pump & Treat.
+2. **Set the treatment level** in the *Treated produced-water return* panel (PW / DPW / PDPW) — the salt, PFAS and NH₃ sliders snap to the report's measured values.
+3. **Release a pulse** and watch the **plan view**: the salt front races ahead while PFAS stays pinned near the field.
+4. Open the **cross-section (side view)** to see PFAS trapped in the vadose zone while salt drains to the water table, which slopes down toward the river.
+5. Click a **river cell** to move the return point; click **open ground** to add a pumping well and test capture vs. vadose rebound.
+6. The **Learn tab** has the scenario guide, a chemical-by-chemical transport table, the governing equations (Darcy flow, well drawdown, river routing), and all references.
 
-## Salinity Focus
-
-A major current focus is salinity because it is one of the most important indicators for evaluating produced water reuse impacts in the Pecos River Basin.
-
-The dashboard water quality section can be used to support:
-
-- Spatial and temporal salinity analysis
-- Mixing and dilution evaluation
-- Comparison of baseline and release scenarios
-- Identification of potential threshold exceedance zones
-
-## Constituent Transport
-
-The current modeling framework supports analysis of dissolved constituents through integrated watershed and groundwater processes.
-
-This allows evaluation of:
-
-- In-stream transport
-- Groundwater–surface water exchange
-- Loading and routing across subbasins
-- Changes caused by release location, timing, and flow condition
-
-## Current and Future Dashboard Functions
-
-This page is intended to expand into an interactive basin-aware water quality analysis page with:
-
-- Salinity plots at key stations
-- Spatial water quality maps
-- Time-series comparison across scenarios
-- Threshold-based interpretation tools
-- Summary statistics for selected reaches and periods
-
-## Planned Visuals
-
-![Water quality conceptual placeholder](images/water_quality_placeholder.png)
-
-*Figure. Placeholder for salinity maps, constituent transport plots, or station-based water quality figures.*
+The lab runs as a self-contained client-side app; use the **full-screen button** below the embed if it feels cramped.
