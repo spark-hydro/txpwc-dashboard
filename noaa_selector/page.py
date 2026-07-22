@@ -14,6 +14,8 @@ Required daily data in noaa_raw/ (current working dir):
 
 import os
 import datetime
+import time
+import requests
 from pathlib import Path
 
 import folium
@@ -32,6 +34,16 @@ try:
     HAS_EXPORTER = True
 except ImportError:
     HAS_EXPORTER = False
+
+try:
+    from .scripts.download_noaa_daily import download_noaa_daily as _download_daily
+    HAS_DOWNLOADER = True
+except ImportError:
+    try:
+        from noaa_selector.scripts.download_noaa_daily import download_noaa_daily as _download_daily
+        HAS_DOWNLOADER = True
+    except ImportError:
+        HAS_DOWNLOADER = False
 
 try:
     from components.sidebar import render_sidebar
@@ -287,7 +299,7 @@ def run_app():
             T("🎛️ Filters & Selection", "🎛️ Filtros y Selección"),
             T("📊 Climate Analysis",    "📊 Análisis Climático"),
             T("🔬 Cal vs Val",           "🔬 Calibración vs Validación"),
-            T("📦 Export SWAT+",         "📦 Exportar SWAT+"),
+            T("📥 Download & Export",     "📥 Descargar y Exportar"),
         ]
     )
 
@@ -501,6 +513,25 @@ def run_app():
         st.header(T("Interactive Station Selection",
                     "Selección Interactiva de Estaciones"))
 
+        # ── Filter summary bar ─────────────────────────────────────────────
+        _f_prev = st.session_state.get("filters", {})
+        st.info(T(
+            f"👈 **Use the left sidebar to adjust filters.** "
+            f"Current settings: "
+            f"Active ≥ **{_f_prev.get('min_active_year', '—')}** · "
+            f"Record ≥ **{int(_f_prev.get('min_span_years', 0))} yr** · "
+            f"NOAA coverage ≥ **{_f_prev.get('min_datacoverage', 0):.0%}** · "
+            f"Cal. window **{_f_prev.get('cal_start', '—')} → {_f_prev.get('cal_end', '—')}** · "
+            f"Spacing ≥ **{int(_f_prev.get('min_dist_km', 0))} km**",
+            f"👈 **Usa la barra lateral izquierda para ajustar los filtros.** "
+            f"Configuración actual: "
+            f"Activas ≥ **{_f_prev.get('min_active_year', '—')}** · "
+            f"Registro ≥ **{int(_f_prev.get('min_span_years', 0))} años** · "
+            f"Cobertura NOAA ≥ **{_f_prev.get('min_datacoverage', 0):.0%}** · "
+            f"Ventana cal. **{_f_prev.get('cal_start', '—')} → {_f_prev.get('cal_end', '—')}** · "
+            f"Espaciado ≥ **{int(_f_prev.get('min_dist_km', 0))} km**"
+        ))
+
         with st.expander(T("ℹ️ How does this work?", "ℹ️ ¿Cómo funciona?"), expanded=True):
             st.markdown(T(
                 f"""
@@ -615,6 +646,83 @@ def run_app():
         filtered = apply_filters(catalog, f)
         st.session_state["filtered_stations"] = filtered
 
+        # ── Filter funnel ──────────────────────────────────────────────────
+        st.subheader(T("🔽 How filters reduce the selection",
+                       "🔽 Cómo los filtros reducen la selección"))
+
+        _d = catalog.copy()
+        _labels, _counts = [], []
+
+        def _add(label_en, label_es):
+            _labels.append(label_en if language == "English" else label_es)
+            _counts.append(len(_d))
+
+        _add("All stations", "Todas las estaciones")
+
+        if f.get("min_active_year"):
+            _d = _d[_d["maxdate"].dt.year >= f["min_active_year"]]
+        _add(f"Active ≥ {f['min_active_year']}", f"Activas ≥ {f['min_active_year']}")
+
+        if f.get("min_span_years"):
+            _d = _d[_d["span_years"] >= f["min_span_years"]]
+        _add(f"Record ≥ {f['min_span_years']} yr", f"Registro ≥ {f['min_span_years']} años")
+
+        if f.get("min_datacoverage"):
+            _d = _d[_d["datacoverage"] >= f["min_datacoverage"]]
+        _add(f"NOAA coverage ≥ {f['min_datacoverage']:.0%}", f"Cobertura NOAA ≥ {f['min_datacoverage']:.0%}")
+
+        _cal_s   = f.get("cal_start")
+        _cal_e   = f.get("cal_end")
+        _min_cov = f.get("min_cover_frac", 0)
+        if _cal_s and _cal_e and _min_cov:
+            _cs = pd.Timestamp(_cal_s)
+            _ce = pd.Timestamp(_cal_e)
+            _cy = _ce.year - _cs.year + 1
+            def _cover_frac(row):
+                if pd.isna(row["mindate"]) or pd.isna(row["maxdate"]):
+                    return 0.0
+                return max(0, min(row["maxdate"].year, _ce.year) -
+                           max(row["mindate"].year, _cs.year) + 1) / _cy
+            _d = _d[_d.apply(_cover_frac, axis=1) >= _min_cov]
+        _add(f"Cal. window ≥ {_min_cov:.0%}", f"Ventana cal. ≥ {_min_cov:.0%}")
+
+        _bands = f.get("elev_bands", [])
+        if _bands and len(_bands) < 4:
+            _d = _d[_d["elev_band"].isin(_bands)]
+        _add("Elevation bands", "Bandas de elevación")
+
+        _labels.append(
+            f"Spacing ≥ {f['min_dist_km']} km" if language == "English"
+            else f"Espaciado ≥ {f['min_dist_km']} km"
+        )
+        _counts.append(len(filtered))
+
+        _colors = [
+            "#1f77b4" if i == 0
+            else ("#d62728" if _counts[i] < _counts[i - 1] else "#aec7e8")
+            for i in range(len(_counts))
+        ]
+
+        fig_funnel = go.Figure(go.Bar(
+            y=_labels,
+            x=_counts,
+            orientation="h",
+            marker_color=_colors,
+            text=[str(c) for c in _counts],
+            textposition="outside",
+        ))
+        fig_funnel.update_layout(
+            height=290,
+            xaxis=dict(
+                title=T("Stations remaining", "Estaciones restantes"),
+                range=[0, len(catalog) * 1.15],
+            ),
+            yaxis=dict(autorange="reversed"),
+            showlegend=False,
+            margin=dict(l=10, r=50, t=10, b=30),
+        )
+        st.plotly_chart(fig_funnel, use_container_width=True)
+
         # ── Executive summary ──
         st.subheader(T("📋 Executive Summary", "📋 Resumen Ejecutivo"))
         n_total     = len(catalog)
@@ -657,6 +765,53 @@ def run_app():
                 f"✅ {n_sel} stations — meets SWAT and WMO standards.",
                 f"✅ {n_sel} estaciones — cumple SWAT y OMM."
             ))
+
+        # ── Next step callout ──────────────────────────────────────────────
+        if n_sel > 0:
+            _n_ready  = filtered["id"].isin(downloaded_ids).sum() if not filtered.empty else 0
+            _n_missing = n_sel - _n_ready
+
+            if _n_ready == 0:
+                st.warning(T(
+                    f"""
+                    📂 **No daily data yet for your {n_sel} selected stations.**
+
+                    This dashboard includes a pre-loaded dataset for initial exploration,
+                    but **Climate Analysis reflects only stations that have been downloaded**.
+                    Go to **📥 Download & Export**, enter your free NOAA token, and download
+                    the daily PRCP / TMAX / TMIN files for exactly these {n_sel} stations.
+                    They will be saved automatically and Climate Analysis will update instantly.
+                    """,
+                    f"""
+                    📂 **Aún no hay datos diarios para tus {n_sel} estaciones seleccionadas.**
+
+                    Este dashboard incluye un conjunto de datos precargado para exploración inicial,
+                    pero el **Análisis Climático solo refleja estaciones descargadas**.
+                    Ve a **📥 Descargar y Exportar**, ingresa tu token NOAA gratuito y descarga
+                    los archivos diarios PRCP / TMAX / TMIN para estas {n_sel} estaciones.
+                    Se guardarán automáticamente y el Análisis Climático se actualizará al instante.
+                    """
+                ))
+            elif _n_missing > 0:
+                st.info(T(
+                    f"""
+                    📂 **{_n_ready} of {n_sel} stations already downloaded** — Climate Analysis
+                    is active for those. Go to **📥 Download & Export** to add the remaining
+                    {_n_missing} stations and get a more complete analysis.
+                    """,
+                    f"""
+                    📂 **{_n_ready} de {n_sel} estaciones ya descargadas** — el Análisis Climático
+                    está activo para esas. Ve a **📥 Descargar y Exportar** para agregar las
+                    {_n_missing} restantes y obtener un análisis más completo.
+                    """
+                ))
+            else:
+                st.success(T(
+                    f"📂 **All {n_sel} selected stations are downloaded.** "
+                    "Climate Analysis is fully up to date with your current selection.",
+                    f"📂 **Las {n_sel} estaciones seleccionadas están descargadas.** "
+                    "El Análisis Climático está completamente actualizado con tu selección."
+                ))
 
         # ── Live map ──
         st.subheader(T("🗺️ Selection map (live)", "🗺️ Mapa de selección (en vivo)"))
@@ -727,7 +882,11 @@ def run_app():
             ).add_to(excluded_layer)
         excluded_layer.add_to(m_sel)
 
-        # Selected stations as red markers with score in popup
+        # Selected stations colored by elevation band (same as overview map)
+        band_colors = {
+            "low": "blue", "mid-low": "green",
+            "mid-high": "orange", "high": "red", "NA": "gray",
+        }
         cluster = MarkerCluster(
             name=T(f"Selected stations ({len(filtered)})",
                    f"Estaciones seleccionadas ({len(filtered)})")
@@ -737,11 +896,13 @@ def run_app():
             score_val = getattr(row, "score", float("nan"))
             cov_val   = getattr(row, "cover_frac", float("nan"))
             span_val  = getattr(row, "span_years", float("nan"))
+            band  = getattr(row, "elev_band", "NA")
+            color = band_colors.get(band, "gray")
             popup_html = (
                 f"<b>{row.name}</b><br>"
                 f"<i>{getattr(row, 'id', '')}</i><br>"
                 f"Elevation: {getattr(row, 'elevation', 0):.0f} m "
-                f"({getattr(row, 'elev_band', 'NA')})<br>"
+                f"({band})<br>"
                 f"Record: {span_val:.1f} yr<br>"
                 f"Cal coverage: {cov_val:.0%}<br>"
                 f"<b>Score: {score_val:.3f}</b>"
@@ -749,7 +910,7 @@ def run_app():
             folium.Marker(
                 location=[row.latitude, row.longitude],
                 popup=folium.Popup(popup_html, max_width=250),
-                icon=folium.Icon(color="red", icon="cloud", prefix="fa"),
+                icon=folium.Icon(color=color, icon="cloud", prefix="fa"),
             ).add_to(cluster)
 
         folium.LayerControl().add_to(m_sel)
@@ -1207,7 +1368,7 @@ def run_app():
 
                 fig_spei = px.bar(
                     annual_spei, x="year", y="SPEI", color="SPEI",
-                    color_continuous_scale="PuOr_r", color_continuous_midpoint=0,
+                    color_continuous_scale="RdBu", color_continuous_midpoint=0,
                     hover_data=["class", "WB", "PET", "PRCP"],
                     title=T(
                         f"Annual SPEI (Thornthwaite PET) — {BASIN_NAME}",
@@ -1456,72 +1617,220 @@ def run_app():
                              f"✅ Temperaturas similares (Δ = {dt:+.2f}°C)."))
 
     # ══════════════════════════════════════════════════════════════════════════
-    # EXPORT SWAT+
+    # DOWNLOAD & EXPORT
     # ══════════════════════════════════════════════════════════════════════════
-    elif step == T("📦 Export SWAT+", "📦 Exportar SWAT+"):
+    elif step == T("📥 Download & Export", "📥 Descargar y Exportar"):
 
-        st.header(T("Export SWAT+ Climate Files","Exportar Archivos Climáticos SWAT+"))
 
-        if not HAS_EXPORTER:
-            st.error(T("Exporter module not found.","Módulo no encontrado."))
-            st.stop()
+        st.header(T("Download Climate Data", "Descargar Datos Climáticos"))
 
         if "filtered_stations" not in st.session_state:
             st.session_state["filtered_stations"] = apply_filters(
                 catalog, st.session_state["filters"]
             )
-        filtered = st.session_state["filtered_stations"]
-        exportable = filtered[filtered["id"].isin(downloaded_ids)] if not filtered.empty \
-                     else catalog[catalog["id"].isin(downloaded_ids)]
+        filtered  = st.session_state["filtered_stations"]
+        f         = st.session_state["filters"]
 
-        st.info(T(
-            f"Ready to export **{len(exportable)} stations** matching filters AND with local data.",
-            f"Listo para exportar **{len(exportable)} estaciones** con filtros Y datos locales."
+        # ── Station selection ──────────────────────────────────────────────
+        n_filtered = len(filtered)
+        col1, col2, col3 = st.columns(3)
+        col1.metric(T("Stations from your filters", "Estaciones de tus filtros"), n_filtered)
+        col2.metric(T("Already downloaded", "Ya descargadas"), len(downloaded_ids))
+        col3.metric(T("Pending download", "Pendientes de descarga"),
+                    n_filtered - filtered["id"].isin(downloaded_ids).sum()
+                    if not filtered.empty else 0)
+
+        dl_scope = st.radio(
+            T("Download which stations?", "¿Qué estaciones descargar?"),
+            [
+                T(f"Only missing ({n_filtered - filtered['id'].isin(downloaded_ids).sum()} stations)",
+                  f"Solo las que faltan ({n_filtered - filtered['id'].isin(downloaded_ids).sum()} estaciones)"),
+                T(f"All filtered ({n_filtered} stations)",
+                  f"Todas las filtradas ({n_filtered} estaciones)"),
+            ],
+            horizontal=True,
+        ) if not filtered.empty else None
+
+        already = filtered["id"].isin(downloaded_ids)
+        to_dl   = filtered if (dl_scope and "All" in dl_scope) else filtered[~already]
+
+        if to_dl.empty:
+            st.success(T("✅ All filtered stations already downloaded.",
+                         "✅ Todas las estaciones filtradas ya están descargadas."))
+        else:
+            st.info(T(f"**{len(to_dl)} stations** will be downloaded.",
+                      f"Se descargarán **{len(to_dl)} estaciones**."))
+
+        st.divider()
+
+        # ── Token & date range ─────────────────────────────────────────────
+        st.subheader(T("🔑 NOAA Token & Date Range", "🔑 Token NOAA y Rango de Fechas"))
+
+        col_t, col_d1, col_d2 = st.columns(3)
+        with col_t:
+            dl_token = st.text_input(
+                T("NOAA API token", "Token NOAA API"), type="password",
+                help=T("Get a free token at ncdc.noaa.gov/cdo-web/token",
+                       "Obtén tu token gratuito en ncdc.noaa.gov/cdo-web/token")
+            )
+            st.markdown("[Get free token →](https://www.ncdc.noaa.gov/cdo-web/token)")
+        with col_d1:
+            dl_start = st.date_input(
+                T("Download from", "Descargar desde"),
+                value=f["cal_start"],
+            )
+        with col_d2:
+            dl_end = st.date_input(
+                T("Download to", "Descargar hasta"),
+                value=f["cal_end"],
+            )
+
+        n_years = dl_end.year - dl_start.year + 1
+        # ~1.5 s per API call (response + 0.2 s sleep between years) + 0.25 s between stations
+        _est_secs = len(to_dl) * (n_years * 1.5 + 0.25)
+        if _est_secs < 60:
+            _est_str    = T(f"~{int(_est_secs)} seconds", f"~{int(_est_secs)} segundos")
+            _est_str_es = f"~{int(_est_secs)} segundos"
+        elif _est_secs < 3600:
+            _m, _s = divmod(int(_est_secs), 60)
+            _est_str    = T(f"~{_m} min {_s} sec", f"~{_m} min {_s} seg")
+            _est_str_es = f"~{_m} min {_s} seg"
+        else:
+            _h, _rem = divmod(int(_est_secs), 3600)
+            _m2 = _rem // 60
+            _est_str    = T(f"~{_h} h {_m2} min", f"~{_h} h {_m2} min")
+            _est_str_es = f"~{_h} h {_m2} min"
+
+        st.caption(T(
+            f"⏱️ Estimated time: {_est_str} "
+            f"({len(to_dl)} stations × {n_years} years)",
+            f"⏱️ Tiempo estimado: {_est_str_es} "
+            f"({len(to_dl)} estaciones × {n_years} años)"
         ))
 
-        if exportable.empty:
-            st.warning(T("Nothing to export.","Nada para exportar."))
-            st.stop()
-
-        col1, col2 = st.columns(2)
-        with col1:
-            exp_start = st.date_input(T("Export from","Exportar desde"),
-                                       value=datetime.date(2000, 1, 1))
-        with col2:
-            exp_end = st.date_input(T("Export to","Exportar hasta"),
-                                     value=datetime.date(2024, 12, 31))
-
-        output_folder = st.text_input(T("Output folder","Carpeta de salida"),
-                                       value="swatplus_climate")
-
-        if st.button(T("🚀 Generate SWAT+ files","🚀 Generar archivos SWAT+"),
-                     type="primary"):
-            exp_gdf = gpd.GeoDataFrame(
-                exportable,
-                geometry=gpd.points_from_xy(exportable.longitude, exportable.latitude),
-                crs=4326
+        if st.button(
+            T(f"⬇️ Download {len(to_dl)} stations", f"⬇️ Descargar {len(to_dl)} estaciones"),
+            type="primary", disabled=not dl_token or to_dl.empty,
+        ):
+            # Token check
+            _test = requests.get(
+                "https://www.ncei.noaa.gov/cdo-web/api/v2/datasets",
+                headers={"token": dl_token.strip()}, timeout=10
             )
-            with st.spinner(T("Generating…","Generando…")):
-                try:
-                    result = export_swatplus(
-                        stations_gdf=exp_gdf,
-                        noaa_folder=NOAA_RAW_DIR,
-                        output_folder=output_folder,
-                        start_date=exp_start,
-                        end_date=exp_end,
-                    )
-                except Exception as e:
-                    st.error(f"Export failed: {e}")
-                    st.stop()
+            if _test.status_code != 200:
+                st.error(T(
+                    f"❌ Token rejected (HTTP {_test.status_code}). "
+                    "Check your token at ncdc.noaa.gov/cdo-web/token.",
+                    f"❌ Token rechazado (HTTP {_test.status_code}). "
+                    "Verifica en ncdc.noaa.gov/cdo-web/token."
+                ))
+                st.stop()
 
-            st.success(T(
-                f"✅ {result['n_pcp']} .pcp + {result['n_tmp']} .tmp generated",
-                f"✅ {result['n_pcp']} .pcp + {result['n_tmp']} .tmp generados"
+            st.success(T("✅ Token valid — downloading…", "✅ Token válido — descargando…"))
+            os.makedirs(NOAA_RAW_DIR, exist_ok=True)
+
+            _progress = st.progress(0)
+            _status   = st.empty()
+            _ok, _err = [], []
+
+            for _i, _row in enumerate(to_dl.itertuples()):
+                _status.text(T(
+                    f"({_i+1}/{len(to_dl)}) {_row.name}…",
+                    f"({_i+1}/{len(to_dl)}) {_row.name}…"
+                ))
+                _progress.progress((_i + 1) / len(to_dl))
+                try:
+                    _df = _download_daily(_row.id, dl_start, dl_end, token=dl_token)
+                    if not _df.empty:
+                        _fname = _row.id.replace(":", "_") + ".csv"
+                        _df.to_csv(os.path.join(NOAA_RAW_DIR, _fname), index=False)
+                        _ok.append(_row.name)
+                    else:
+                        _err.append(f"{_row.name} — no data for this period")
+                except Exception as _e:
+                    _err.append(f"{_row.name}: {_e}")
+                time.sleep(0.25)
+
+            _progress.empty()
+            _status.empty()
+            st.cache_data.clear()
+
+            if _ok:
+                st.success(T(
+                    f"✅ {len(_ok)} stations downloaded to `{NOAA_RAW_DIR}/`. "
+                    "Go to **📊 Climate Analysis** to see results.",
+                    f"✅ {len(_ok)} estaciones descargadas en `{NOAA_RAW_DIR}/`. "
+                    "Ve a **📊 Análisis Climático** para ver los resultados."
+                ))
+            else:
+                st.error(T("❌ 0 stations downloaded.", "❌ 0 estaciones descargadas."))
+
+            if _err:
+                with st.expander(T(f"⚠️ {len(_err)} stations with issues",
+                                   f"⚠️ {len(_err)} estaciones con problemas")):
+                    st.text("\n".join(_err[:30]))
+
+        st.divider()
+
+        # ── SWAT+ export (secondary) ───────────────────────────────────────
+        with st.expander(T(
+            "📦 Export SWAT+ files (advanced — for hydrological modelling)",
+            "📦 Exportar archivos SWAT+ (avanzado — para modelación hidrológica)"
+        ), expanded=False):
+            st.markdown(T(
+                "Generates `.pcp` and `.tmp` files from data already in `noaa_raw/`. "
+                "Only needed if you are running a SWAT+ model.",
+                "Genera archivos `.pcp` y `.tmp` desde los datos en `noaa_raw/`. "
+                "Solo necesario si corres un modelo SWAT+."
             ))
-            with open(result["zip_path"], "rb") as zf:
-                st.download_button(
-                    T("⬇️ Download SWAT+ climate package","⬇️ Descargar paquete SWAT+"),
-                    data=zf.read(),
-                    file_name=os.path.basename(result["zip_path"]),
-                    mime="application/zip",
-                )
+            if not HAS_EXPORTER:
+                st.error(T("Exporter module not found.", "Módulo exportador no encontrado."))
+            else:
+                exportable = filtered[filtered["id"].isin(downloaded_ids)] \
+                             if not filtered.empty else catalog[catalog["id"].isin(downloaded_ids)]
+                st.info(T(f"{len(exportable)} stations ready to export.",
+                          f"{len(exportable)} estaciones listas para exportar."))
+                if exportable.empty:
+                    st.warning(T("Download data first above.", "Descarga datos primero arriba."))
+                else:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        exp_start = st.date_input(T("Export from","Exportar desde"),
+                                                   value=datetime.date(2000, 1, 1),
+                                                   key="exp_start")
+                    with col2:
+                        exp_end = st.date_input(T("Export to","Exportar hasta"),
+                                                 value=datetime.date(2024, 12, 31),
+                                                 key="exp_end")
+                    output_folder = st.text_input(T("Output folder","Carpeta de salida"),
+                                                   value="swatplus_climate")
+                    if st.button(T("🚀 Generate SWAT+ files","🚀 Generar archivos SWAT+"),
+                                 type="primary"):
+                        exp_gdf = gpd.GeoDataFrame(
+                            exportable,
+                            geometry=gpd.points_from_xy(exportable.longitude, exportable.latitude),
+                            crs=4326
+                        )
+                        with st.spinner(T("Generating…","Generando…")):
+                            try:
+                                result = export_swatplus(
+                                    stations_gdf=exp_gdf,
+                                    noaa_folder=NOAA_RAW_DIR,
+                                    output_folder=output_folder,
+                                    start_date=exp_start,
+                                    end_date=exp_end,
+                                )
+                            except Exception as e:
+                                st.error(f"Export failed: {e}")
+                                st.stop()
+                        st.success(T(
+                            f"✅ {result['n_pcp']} .pcp + {result['n_tmp']} .tmp generated",
+                            f"✅ {result['n_pcp']} .pcp + {result['n_tmp']} .tmp generados"
+                        ))
+                        with open(result["zip_path"], "rb") as zf:
+                            st.download_button(
+                                T("⬇️ Download SWAT+ package","⬇️ Descargar paquete SWAT+"),
+                                data=zf.read(),
+                                file_name=os.path.basename(result["zip_path"]),
+                                mime="application/zip",
+                            )
