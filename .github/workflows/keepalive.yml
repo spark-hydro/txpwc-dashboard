@@ -1,0 +1,38 @@
+name: Streamlit Keepalive
+
+on:
+  schedule:
+    # Streamlit Community Cloud sleeps apps after 12 hours without traffic
+    # (confirmed in official docs). Ping every 6 hours so scheduled-run
+    # delays (GitHub Actions cron can lag by tens of minutes) never let
+    # the app cross that 12-hour threshold unpinged.
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: streamlit-keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+
+      - name: Ping app
+        env:
+          STREAMLIT_URL: ${{ vars.STREAMLIT_URL }}
+        run: python .github/scripts/keepalive.py
