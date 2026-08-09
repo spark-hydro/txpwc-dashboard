@@ -5,7 +5,7 @@ from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
 from core.utils.kiosk import is_kiosk_mode, render_kiosk
-from core.utils.visual_kit import Card, HeroStat, render_cards, render_cta, render_hero_stats
+from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats
 from pathlib import Path
 import re
 
@@ -186,23 +186,14 @@ st.html(f"""
 
 
 # -----------------------------
-# Hook: proof numbers, then the one thing we want visitors to actually touch
+# Hook: proof numbers from the pilot report
 # -----------------------------
 render_hero_stats([
     HeroStat("99.7%", "Of salt removed in pilot testing — 131,000 → 352 mg/L"),
-    HeroStat("Not detected", "PFAS at every stage of treatment (EPA Method 1633)"),
+    HeroStat("8×", "Saltier than seawater at the Malaga Bend brine springs"),
     HeroStat("121,404 km²", "Of the Pecos Basin represented in the model"),
     HeroStat("1,110", "Climate stations feeding the simulations"),
 ])
-
-render_cta(
-    "🧪",
-    "Try the contaminant-transport lab",
-    "Release treated water into the Pecos yourself and watch salt, PFAS, and ammonia "
-    "move at completely different speeds through the aquifer. Runs on your phone.",
-    "https://josephauresy.github.io/pecos-salinity-lab/",
-    "Open the lab ↗",
-)
 
 # -----------------------------
 # Render main content
