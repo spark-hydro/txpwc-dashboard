@@ -73,6 +73,17 @@ A scenario can be defined by combining several factors, such as:
 
 These inputs can produce substantially different downstream and groundwater responses.
 
+## Interactive Reservoir Release Lab
+
+A companion teaching tool (embedded below) lets you explore release strategy across the Pecos's **5 major dams** — Santa Rosa, Sumner, Brantley, Avalon, and Red Bluff — using their real 2000–2020 management history from the SWAT+gwflow reservoir model:
+
+- **Reservoir Map** — real dam locations, sized and colored by mean annual release.
+- **Flow & Management** — set your own release policy for any dam (or load a one-click scenario) and watch the river respond.
+- **Where to Place Reuse Water** — drag a candidate reuse site along the river; the reach lights up green / yellow / red.
+- **Salinity & Fish** — cross-references release choices against documented natural salinity sources and the Pecos pupfish's verified range.
+
+🚧 **Status**: research prototype. The "dilution capacity" shown here is a simplified stand-in — once the Pecos salinity-transport model is finished (see [Hydrology](/Hydrology) status), it will be replaced by reach-by-reach simulated salt transport from the [Salinity Lab](/Water_Quality), closing the loop between reservoir management and where reuse water is actually safe to place.
+
 ## Relevant PEST++ Tools
 
 - **PESTPP-MOU** for constrained multi-objective optimization  

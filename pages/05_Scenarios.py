@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
@@ -64,3 +65,21 @@ if context.basin_id == "Pecos":
 
 # Render content
 st.markdown(rendered_md, unsafe_allow_html=True)
+
+# ── Interactive reservoir-release lab (Pecos only) ─────────────────────────────
+RESERVOIR_LABS = {
+    "Pecos": "https://josephauresy.github.io/pecos-reservoirs/",
+}
+
+reservoir_lab_url = RESERVOIR_LABS.get(context.basin_id)
+if reservoir_lab_url:
+    st.divider()
+    st.subheader("Interactive lab — Reservoir release &amp; reuse siting")
+    st.link_button("↗ Open the lab in full screen", reservoir_lab_url, use_container_width=True)
+    components.iframe(reservoir_lab_url, height=1000, scrolling=True)
+    st.caption(
+        "Source: real 2000–2020 release records for the Pecos's 5 major dams, via the "
+        "Pecos_USA SWAT+gwflow reservoir model. Research prototype, not an operational "
+        "product — the salinity indicator is a simplified stand-in until the salinity-"
+        "transport model is finished."
+    )
