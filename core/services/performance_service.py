@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import streamlit as st
+
 from config.settings import RESOURCES_DIR
 from core.io.txpwc_reader import (
     get_basin_dir,
@@ -19,6 +21,7 @@ from core.io.txpwc_reader import read_station_timeseries
 from core.services.catalog import get_basin_config
 
 
+@st.cache_data
 def load_performance_bundle(context: AppContext) -> PerformanceBundle:
     basin_dir = get_basin_dir(RESOURCES_DIR, context.basin_id)
     basin_config = get_basin_config(context.basin_id)
