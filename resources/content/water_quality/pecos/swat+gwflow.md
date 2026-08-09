@@ -6,6 +6,12 @@ The Pecos Basin TxPWC application evaluates **salinity transport** after a treat
 - **Data**: TxPWC Pilot Testing Report (April 2026) — concentrations anchored to measured values across three treatment stages
 - **Constituent tracked**: TDS (conservative — travels with the groundwater, R = 1)
 
+## Geochemical Parameter Calibration (In Progress)
+
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+
+*PEST++ ensemble calibration for geochemical constituents — salt mineral fraction and major ions (Ca, Cl, CO₃, HCO₃, K, Mg, Na, SO₄) — narrowing across iterations (gray = prior, purple = posterior). Early groundwork toward the salinity-transport recalibration described on the [Hydrology](/Hydrology) roadmap. Provided by the project team; exact source run and status to be confirmed before presenting. Tap / click to zoom.*
+
 ## Interactive Salinity-Transport Lab
 
 An interactive teaching lab (embedded below) lets you explore how salinity from a **treated produced-water return** moves through a Pecos-Basin aquifer toward the Pecos River near Red Bluff Reservoir — and how treatment level, aquifer properties, and pumping change the outcome.

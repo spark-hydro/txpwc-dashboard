@@ -33,9 +33,7 @@ Getting the physical model right comes first. The Pecos SWAT+gwflow model is cal
 
 *Multi-objective calibration trade-off space (PESTPP-MOU): each point is one parameter realization scored against two competing calibration objectives. Gray points are the prior, untested set; the blue and magenta clusters are posterior realizations retained after conditioning on observations. The same PESTPP-MOU workflow will later be reused to rank candidate release and irrigation-reuse strategies once the scenario model is in place — see [Scenarios](/Scenarios). Tap / click to zoom.*
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
-
-*Animated view of the PEST++ ensemble narrowing across iterations as it converges toward the calibrated parameter set. Tap / click to zoom.*
+(Geochemical parameter calibration — salt mineral fraction and major ions — is underway separately; see [Water Quality](/Water_Quality).)
 
 ## Regional Context: Why the Pecos Is Different
 
