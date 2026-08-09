@@ -4,6 +4,7 @@ from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
+from core.utils.kiosk import is_kiosk_mode, render_kiosk
 from pathlib import Path
 import re
 
@@ -15,6 +16,12 @@ st.set_page_config(
     page_icon=APP_ICON,
     layout="wide",
 )
+
+# Poster-session display mode: open the app with ?kiosk=1 to show a
+# full-screen QR landing page instead of the normal Home content.
+if is_kiosk_mode():
+    render_kiosk()
+    st.stop()
 
 # If the floating box overlaps content, add this
 # st.markdown("""
@@ -182,16 +189,3 @@ st.html(f"""
 # -----------------------------
 # Use unsafe_allow_html because headings contain custom <h*> with id anchors
 st.markdown(rendered_md, unsafe_allow_html=True)
-
-#
-# -----------------------------
-# Current selection (debug/info)
-# -----------------------------
-st.subheader("Current selection")
-st.write(
-    {
-        "basin_id": context.basin_id,
-        "model_type": context.model_type,
-        "scenario_id": context.scenario_id,
-    }
-)

@@ -6,15 +6,17 @@ This page describes how data-driven and machine-learning methods can complement 
 
 The goal is not to replace SWAT+gwflow, but to enhance model analysis, accelerate scenario evaluation, and improve insight extraction from simulation and observation datasets.
 
-## Potential Applications
+## Roadmap
 
-The data-driven component can support several practical applications:
+🚧 **Not yet implemented.** This page describes the planned data-driven layer; nothing below is running in the dashboard yet.
 
-- Surrogate modeling to emulate SWAT+gwflow outputs for rapid scenario evaluation
-- Residual learning to correct model errors and improve prediction accuracy
-- Spatiotemporal prediction to capture flow and salinity dynamics
-- Feature importance analysis to identify dominant hydrologic and water quality drivers
-- Scenario risk classification to predict threshold exceedance under alternative strategies
+| Capability | Purpose | Status |
+|---|---|---|
+| Surrogate modeling | Emulate SWAT+gwflow outputs for rapid scenario evaluation | Planned |
+| Residual learning | Correct model errors, improve prediction accuracy | Planned |
+| Spatiotemporal prediction | Capture flow and salinity dynamics | Planned |
+| Feature importance analysis | Identify dominant hydrologic / water-quality drivers | Planned |
+| Scenario risk classification | Predict threshold exceedance under alternative strategies | Planned |
 
 ## Why It Is Useful
 
@@ -45,18 +47,16 @@ Potential outputs include:
 - Threshold exceedance probabilities
 - Fast scenario-response estimates
 
-## Dashboard Use
+## Planned Dashboard Views
 
-This page can later support:
+| View | Shows |
+|---|---|
+| ML workflow summary | Pipeline from SWAT+gwflow outputs to trained surrogate |
+| Predictor importance | Which inputs drive flow / salinity predictions |
+| Observed vs. simulated vs. corrected | Residual-learning improvement over raw SWAT+gwflow |
+| Risk classification | Threshold-exceedance probability by scenario |
+| Fast-response surrogate | Near-instant scenario screening without a full model run |
 
-- ML workflow summaries
-- Predictor importance plots
-- Observed vs simulated vs corrected results
-- Risk classification outputs
-- Fast-response surrogate scenario tools
+## Status
 
-## Planned Visuals
-
-![Data-driven placeholder](images/data_driven_placeholder.png)
-
-*Figure. Placeholder for machine-learning workflow diagrams, feature importance plots, and surrogate-model results.*
+🚧 **Planned** — this page will populate once the reservoir and salinity modules are added to the calibrated SWAT+gwflow model (see the [Hydrology](/Hydrology) and [Scenarios](/Scenarios) pages), giving the surrogate model real scenario outputs to train on.

@@ -9,6 +9,6 @@ CONTENT_DIR = RESOURCES_DIR / "content"
 TXPWC_DIR = RESOURCES_DIR / "txpwc"
 CATALOG_PATH = TXPWC_DIR / "catalogs" / "catalog.json"
 
-DEFAULT_BASIN_ID = "demo_basin"
-DEFAULT_MODEL_TYPE = "txpwc_demo"
+DEFAULT_BASIN_ID = "Pecos"
+DEFAULT_MODEL_TYPE = "SWAT+gwflow"
 DEFAULT_SCENARIO_ID = "baseline"

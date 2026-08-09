@@ -9,12 +9,11 @@ The current Pecos River model domain includes:
 - **Subbasins:** 460  
 - **HRUs:** 2,874  
 - **Land use classes:** 13  
-- **Soil classes:** 18  :contentReference[oaicite:2]{index=2}
+- **Soil classes:** 18
 
-<!-- Placeholder: Pecos study area map -->
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" width="500"></p>
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" width="500" style="cursor:zoom-in;"></a></p>
 
-*Figure 1. Placeholder for the Pecos River Basin study area and model domain.*
+*Figure 1. Pecos River Basin study area and model domain. Tap / click to zoom.*
 
 ## SWAT+gwflow Model Construction
 
@@ -35,10 +34,9 @@ In this project, the framework is used to simulate:
 - Spatial and temporal variability in watershed response  
 - Potential impacts under alternative release strategies  
 
-<!-- Placeholder: SWAT+gwflow conceptual figure -->
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" width="1000"></p>
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
 
-*Figure 2. Placeholder for the SWAT+gwflow conceptual framework used in the Pecos River Basin.*
+*Figure 2. SWAT+gwflow conceptual framework used in the Pecos River Basin. Tap / click to zoom.*
 
 ## Model Inputs and Configuration
 
@@ -55,12 +53,11 @@ The development workflow shown in the presentation includes:
 - Model setup using **QSWAT+**  
 - Configuration and editing in the **SWAT+ Editor**  
 - Model execution using **SWAT+ executable tools**  
-- Preparation for server-based evaluation and dashboard integration  :contentReference[oaicite:8]{index=8}
+- Preparation for server-based evaluation and dashboard integration
 
-<!-- Placeholder: model setup workflow -->
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" width="1000"></p>
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
 
-*Figure 3. Placeholder for the Pecos River model setup and preprocessing workflow.*
+*Figure 3. Pecos River model setup and preprocessing workflow. Tap / click to zoom.*
 
 ## Solute Transport and Produced Water Representation
 

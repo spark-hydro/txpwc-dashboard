@@ -2,27 +2,56 @@
 
 ## Overview
 
-This page describes the scenario-analysis component of the Pecos River TxPWC dashboard. The main purpose is to evaluate how different purified produced water release strategies influence hydrology and water quality across the basin.
+This page describes the scenario-analysis component of the Pecos River TxPWC dashboard. The main purpose is to evaluate how different purified produced-water release and reuse strategies influence hydrology and water quality across the basin.
 
-The scenario framework supports comparison of baseline conditions and alternative release configurations.
+The model is currently calibrated for streamflow (see **Model Calibration** below); scenario simulations are planned once reservoir operations and a salinity-transport module are added — see **Planned Scenario Simulations**.
 
-## Scenario Types
+## Scenario Types (Planned)
 
-The Pecos River application is designed to evaluate multiple management conditions, including:
+- Baseline / existing-condition simulation
+- In-stream produced-water release
+- Land application / irrigation reuse
 
-- Baseline or existing-condition simulations
-- In-stream produced water release scenarios
+## Model Calibration (Current)
 
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" width="1000"></p>
+Getting the physical model right comes first. The Pecos SWAT+gwflow model is calibrated against observed streamflow using PEST++, running thousands of parameter realizations and narrowing them down to the set that best matches real observations.
 
-- Land application or irrigation-related scenarios
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/land_scenarios.png?raw=true" width="1000"></p>
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
 
-- Candidate optimized release strategies
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" width="1000"></p>
+*Flow-duration curve from the PEST++ calibration ensemble: gray lines are individual parameter realizations, the green band is the optimum subset, the blue line is the best-performing realization, and the magenta line is the calibrated baseline — together showing how the model converges toward the observations. Tap / click to zoom.*
 
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
 
-<p align="center"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" width="1000"></p>
+*Multi-objective calibration trade-off space (PESTPP-MOU): each point is one parameter realization scored against two competing calibration objectives. Gray points are the prior, untested set; the blue and magenta clusters are posterior realizations retained after conditioning on observations. The same PESTPP-MOU workflow will later be reused to rank candidate release and irrigation-reuse strategies once the scenario model below is in place. Tap / click to zoom.*
+
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+
+*Animated view of the PEST++ ensemble narrowing across iterations as it converges toward the calibrated parameter set. Tap / click to zoom.*
+
+## Planned Scenario Simulations
+
+🚧 **Not yet run** — these depend on the reservoir and salinity-transport additions described on the [Hydrology](/Hydrology) page.
+
+### In-Stream Produced-Water Release
+
+Once the model includes reservoir operations and a salinity/contaminant transport module, scenarios will simulate a produced-water release at a chosen point on the river and track:
+
+- How streamflow changes downstream of the release
+- How salinity (or another constituent) disperses through the river and into groundwater over time and distance
+
+### Land Application / Irrigation Reuse
+
+A second track will evaluate reusing treated produced water for irrigation instead of (or alongside) in-stream release — showing that reuse can benefit agriculture, not only the river:
+
+- Different crop types and irrigation water-use rates, with land-use classes derived from the existing SWAT+ model
+- Distance from Red Bluff Reservoir as a feasibility factor
+- Whether treatment needs to be improved to reduce a given constituent (e.g., salinity) enough to protect the river — high in-stream salinity can be lethal to fish
+- Groundwater impact of sustained irrigation water quantities over time
+
+### Higher-Resolution Groundwater (Future)
+
+Groundwater results will later be refined using a **MODFLOW 6 unstructured grid**, concentrating finer resolution in the areas that need it most (e.g., near release or irrigation zones) rather than uniformly across the basin.
+
 ## Key Scenario Questions
 
 Scenario analysis is intended to support the following questions:
@@ -44,20 +73,19 @@ A scenario can be defined by combining several factors, such as:
 
 These inputs can produce substantially different downstream and groundwater responses.
 
-## Relevant PEST++ tools
+## Relevant PEST++ Tools
 
 - **PESTPP-MOU** for constrained multi-objective optimization  
 - **PESTPP-SEN** for sensitivity analysis  
 - **PESTPP-IES** for optimization under uncertainty  
 - **PESTPP-SWP** for scenario analysis using predefined parameter or input sets 
 
-## Dashboard Use
+## Status
 
-This page can be developed to support:
+🚧 **Planned dashboard views**, once scenario simulations are available:
 
-- Interactive maps of release locations
+- Interactive maps of release / irrigation locations
 - Scenario-specific hydrographs and salinity plots
-- Side-by-side baseline vs scenario comparisons
+- Side-by-side baseline vs. scenario comparisons
 - Summary tables of key metrics
 - Selection of predefined scenarios from the sidebar or page controls
-

@@ -80,26 +80,26 @@ def render_sidebar() -> AppContext:
         st.session_state["scenario_id"] = selected_scenario
         st.sidebar.markdown("---")
 
-        # Push logos to bottom
+        # Footer logos (flow after the settings, never overlap the widgets above)
         st.sidebar.markdown(
             f"""
             <style>
                 .sidebar-logos {{
-                    position: fixed;
-                    bottom: 20px;
-                    width: 100%;
                     display: flex;
-                    gap: 1px;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                    margin-top: 24px;
                 }}
             </style>
             <div class="sidebar-logos">
                 <a href="https://www.depts.ttu.edu/waterresources/" target="_blank">
-                    <img src="data:image/png;base64,{get_base64_image('assets/logos/water_center.png')}" 
-                        style="width:160px;">
+                    <img src="data:image/png;base64,{get_base64_image('assets/logos/water_center.png')}"
+                        style="width:130px;">
                 </a>
                 <a href="https://spark-hydro.github.io/" target="_blank">
-                    <img src="data:image/png;base64,{get_base64_image('assets/logos/ihydro_lab.png')}" 
-                        style="width:80px;">
+                    <img src="data:image/png;base64,{get_base64_image('assets/logos/ihydro_lab.png')}"
+                        style="width:65px;">
                 </a>
             </div>
             """,
