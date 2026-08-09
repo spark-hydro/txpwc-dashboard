@@ -8,7 +8,7 @@ from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.utils.content import load_water_quality, get_water_quality_path
 from core.utils.page_content import build_outline_and_html, render_floating_outline
-from core.utils.visual_kit import HeroStat, render_hero_stats, render_photo_banner
+from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
 
 
 # Page config
@@ -47,6 +47,38 @@ if context.basin_id == "Pecos":
 
 # Render content
 st.markdown(rendered_md, unsafe_allow_html=True)
+
+# ── Scenario guide as cards (Pecos only) ───────────────────────────────────────
+if context.basin_id == "Pecos":
+    render_cards([
+        Card(
+            "🌊", "Pristine Baseline",
+            "Pre-operation reference: the aquifer before any treated produced-water "
+            "return. Low TDS loading, moderate natural recharge, a relatively wet "
+            "vadose zone, no seasonal water-table swings. Use this as the \"zero\" to "
+            "benchmark every other scenario.",
+        ),
+        Card(
+            "🧂", "High TDS Loading",
+            "Elevated salinity scenario: TDS is elevated at both the ag-field source "
+            "and the river return point, the vadose zone is drier (slower drainage to "
+            "the water table), and seasonal swings periodically flush salt downward. "
+            "Central question: does the plume reach Red Bluff before diluting to safe levels?",
+        ),
+        Card(
+            "☀️", "Drought Year",
+            "Pecos Basin stress test: recharge drops to near-zero, the river slows, "
+            "and in-stream dilution weakens — typical of West Texas dry cycles. Tests "
+            "whether salinity risk to Red Bluff rises when natural flushing shuts down.",
+        ),
+        Card(
+            "⚙️", "Pump &amp; Treat",
+            "Active hydraulic control: two extraction wells at high capacity "
+            "(2,600 m³/d each) capture the salt plume before it reaches the river. "
+            "Shows whether hydraulic containment can intercept the plume, and how "
+            "pumping rate and placement change the mass balance.",
+        ),
+    ])
 
 # ── Treatment train diagram (Pecos only) ──────────────────────────────────────
 _TREATMENT_HTML = """
