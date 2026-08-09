@@ -8,7 +8,7 @@ from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.utils.content import load_water_quality, get_water_quality_path
 from core.utils.page_content import build_outline_and_html, render_floating_outline
-from core.utils.visual_kit import HeroStat, render_hero_stats
+from core.utils.visual_kit import HeroStat, render_hero_stats, render_photo_banner
 
 
 # Page config
@@ -33,6 +33,11 @@ st.html(render_floating_outline(toc))
 
 # Headline results from the April 2026 pilot report, shown before the prose.
 if context.basin_id == "Pecos":
+    render_photo_banner(
+        "red_bluff_reservoir.jpg",
+        "Red Bluff Reservoir, where treated produced water would ultimately reach the "
+        "Pecos. <b>Photo: Johnathan Bumgarner, USGS (public domain).</b>",
+    )
     render_hero_stats([
         HeroStat("99.7%", "Of salt removed — 131,000 → 352 mg/L TDS"),
         HeroStat("99%", "Of ammonia removed — 620 → 6.46 mg/L NH₃"),

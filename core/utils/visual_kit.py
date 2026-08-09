@@ -6,9 +6,25 @@ dashboard reads as one designed system rather than page-by-page markdown.
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 
 import streamlit as st
+
+IMAGES_DIR = Path(__file__).resolve().parents[2] / "resources" / "content" / "images"
+
+
+@lru_cache(maxsize=32)
+def _image_data_uri(filename: str) -> str:
+    path = IMAGES_DIR / filename
+    if not path.exists():
+        return ""
+    b64 = base64.b64encode(path.read_bytes()).decode()
+    ext = path.suffix.lstrip(".").lower()
+    mime = "jpeg" if ext in ("jpg", "jpeg") else ext
+    return f"data:image/{mime};base64,{b64}"
 
 # Status vocabulary shared by every page, so a visitor learns the colour code once.
 STATUS_STYLES = {
@@ -89,6 +105,43 @@ div.vk-hero-card { cursor: default; }
     padding: 3px 10px;
     border-radius: 999px;
     margin-bottom: 6px;
+}
+
+/* ---------- photo banner ---------- */
+.vk-banner {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 4px 0 26px;
+    box-shadow: 0 8px 24px rgba(15,23,42,.18);
+    height: 200px;
+}
+.vk-banner-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+.vk-banner-fade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(6,20,28,0) 45%, rgba(6,20,28,.82) 100%);
+}
+.vk-banner-caption {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 12px;
+    color: #e7f6fb;
+    font-size: .78rem;
+    line-height: 1.35;
+    text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+.vk-banner-caption b { color: #ffffff; }
+@media (max-width: 700px) {
+    .vk-banner { height: 150px; }
 }
 
 /* ---------- call to action ---------- */
@@ -242,6 +295,19 @@ def render_cards(cards: list[Card]) -> None:
             f'<div class="vk-card-text">{c.text}</div>{src}</div>'
         )
     st.html(f'{VK_CSS}<div class="vk-grid">{"".join(html)}</div>')
+
+
+def render_photo_banner(filename: str, caption: str) -> None:
+    """Full-width real photo with a bottom fade + small credit line."""
+    src = _image_data_uri(filename)
+    if not src:
+        return
+    st.html(
+        f'{VK_CSS}<div class="vk-banner">'
+        f'<img class="vk-banner-img" src="{src}" alt="{caption}">'
+        f'<div class="vk-banner-fade"></div>'
+        f'<div class="vk-banner-caption">{caption}</div></div>'
+    )
 
 
 def render_cta(icon: str, title: str, text: str, url: str, button_label: str) -> None:

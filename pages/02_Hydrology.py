@@ -13,7 +13,7 @@ from core.plotting.duration_curves import plot_fdc
 from core.plotting.hydrographs import plot_streamflow_hydrograph
 from core.plotting.groundwater import plot_groundwater_scatter
 from core.plotting.regional_context import plot_annual_flow_trend
-from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats
+from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
 
 
 # Page config
@@ -39,6 +39,11 @@ st.html(render_floating_outline(toc))
 # Hero stat strip (Pecos only): immediate visual hook before any prose.
 # Each number links down to the card that explains it.
 if context.basin_id == "Pecos":
+    render_photo_banner(
+        "pecos_salt_flat.jpg",
+        "Dried salt flats along the lower Pecos, near Red Bluff Reservoir. "
+        "<b>Photo: Johnathan Bumgarner, USGS (public domain).</b>",
+    )
     render_hero_stats([
         HeroStat("−75%", "Flow lost to diversions, pumping &amp; evaporation", "card-dry"),
         HeroStat("8×", "Saltier than seawater at the Malaga Bend springs", "card-brine"),

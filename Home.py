@@ -5,7 +5,7 @@ from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
 from core.utils.kiosk import is_kiosk_mode, render_kiosk
-from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats
+from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
 from pathlib import Path
 import re
 
@@ -186,8 +186,14 @@ st.html(f"""
 
 
 # -----------------------------
-# Hook: proof numbers from the pilot report
+# Hook: a real photo, then proof numbers from the pilot report
 # -----------------------------
+render_photo_banner(
+    "pecos_river_highbridge.jpg",
+    "The Pecos River, looking downstream toward the Rio Grande confluence near Comstock, TX. "
+    "<b>Photo: Natalie Houston, USGS (public domain).</b>",
+)
+
 render_hero_stats([
     HeroStat("99.7%", "Of salt removed in pilot testing — 131,000 → 352 mg/L"),
     HeroStat("8×", "Saltier than seawater at the Malaga Bend brine springs"),
