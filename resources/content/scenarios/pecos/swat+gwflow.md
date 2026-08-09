@@ -4,23 +4,7 @@
 
 This page describes the scenario-analysis component of the Pecos River TxPWC dashboard: evaluating how different purified produced-water release and reuse strategies influence hydrology and water quality across the basin.
 
-The model is currently calibrated for streamflow (see **Model Calibration** below). Scenario simulations through SWAT+gwflow itself are planned once reservoir operations and a salinity-transport module are added — see **Planned SWAT+gwflow Scenarios**. In the meantime, the **Interactive Reservoir Release Lab** at the bottom of this page lets you explore real release-strategy trade-offs today, using the Pecos's actual 2000–2020 management history.
-
-## Model Calibration (Current)
-
-Getting the physical model right comes first. The Pecos SWAT+gwflow model is calibrated against observed streamflow using PEST++, running thousands of parameter realizations and narrowing them down to the set that best matches real observations.
-
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
-
-*Flow-duration curve from the PEST++ calibration ensemble: gray lines are individual parameter realizations, the green band is the optimum subset, the blue line is the best-performing realization, and the magenta line is the calibrated baseline — together showing how the model converges toward the observations. Tap / click to zoom.*
-
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
-
-*Multi-objective calibration trade-off space (PESTPP-MOU): each point is one parameter realization scored against two competing calibration objectives. Gray points are the prior, untested set; the blue and magenta clusters are posterior realizations retained after conditioning on observations. The same PESTPP-MOU workflow will later be reused to rank candidate release and irrigation-reuse strategies once the scenario model below is in place. Tap / click to zoom.*
-
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/ua.gif?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
-
-*Animated view of the PEST++ ensemble narrowing across iterations as it converges toward the calibrated parameter set. Tap / click to zoom.*
+The model is currently calibrated for streamflow (see **Model Calibration** on the [Hydrology](/Hydrology) page). Scenario simulations through SWAT+gwflow itself are planned once reservoir operations and a salinity-transport module are added — see **Planned SWAT+gwflow Scenarios**. In the meantime, the **Interactive Reservoir Release Lab** at the bottom of this page lets you explore real release-strategy trade-offs today, using the Pecos's actual 2000–2020 management history.
 
 ## Planned SWAT+gwflow Scenarios
 
