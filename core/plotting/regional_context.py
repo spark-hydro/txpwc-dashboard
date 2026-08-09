@@ -32,11 +32,11 @@ def plot_annual_flow_trend(df: pd.DataFrame) -> go.Figure:
         )
 
     fig.update_layout(
-        title="Pecos River near Girvin, TX — Annual Mean Streamflow (USGS 08446500)",
+        title=dict(text="60 Years of Annual Streamflow", font=dict(size=16)),
         xaxis_title="Year",
         yaxis_title="Mean flow (cfs)",
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=60, b=20),
+        margin=dict(l=20, r=20, t=50, b=20),
     )
     return fig
