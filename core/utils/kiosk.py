@@ -14,10 +14,12 @@ import pandas as pd
 import streamlit as st
 
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
+LAB_URL = "https://josephauresy.github.io/pecos-salinity-lab/"
 REPO_URL = "https://github.com/spark-hydro/txpwc-dashboard"
 
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 QR_SVG_PATH = ASSETS_DIR / "qr_dashboard.svg"
+QR_LAB_SVG_PATH = ASSETS_DIR / "qr_lab.svg"
 LOGO_PATH = ASSETS_DIR / "logos" / "txpwc.png"
 STATIONS_CATALOG_PATH = (
     Path(__file__).resolve().parents[2] / "noaa_selector" / "data" / "stations_catalog.csv"
@@ -60,6 +62,8 @@ def render_kiosk() -> None:
     stats = _load_kiosk_stats()
     qr_b64 = _load_base64_image(str(QR_SVG_PATH))
     qr_data_uri = f"data:image/svg+xml;base64,{qr_b64}" if qr_b64 else ""
+    qr_lab_b64 = _load_base64_image(str(QR_LAB_SVG_PATH))
+    qr_lab_data_uri = f"data:image/svg+xml;base64,{qr_lab_b64}" if qr_lab_b64 else ""
     logo_b64 = _load_base64_image(str(LOGO_PATH))
 
     station_stat = f"{stats['station_count']:,}" if stats["station_count"] else "1,100+"
@@ -267,9 +271,47 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     text-decoration: none;
 }}
 
+.kiosk-lab-strip {{
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+    padding: 14px 22px;
+    border-radius: 16px;
+    background: rgba(110, 231, 216, 0.08);
+    border: 1px solid rgba(110, 231, 216, 0.35);
+}}
+.kiosk-lab-qr {{
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 6px;
+    flex-shrink: 0;
+    line-height: 0;
+}}
+.kiosk-lab-qr img {{
+    display: block;
+    width: 84px;
+    height: 84px;
+}}
+.kiosk-lab-text {{
+    text-align: left;
+}}
+.kiosk-lab-title {{
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+}}
+.kiosk-lab-sub {{
+    font-size: 0.85rem;
+    color: #a9d8e6;
+    margin-top: 2px;
+}}
+
 @media (max-width: 700px) {{
     .kiosk-card {{ padding: 32px 20px 28px; gap: 16px; }}
     .kiosk-stats {{ gap: 20px; }}
+    .kiosk-lab-strip {{ flex-direction: column; text-align: center; }}
+    .kiosk-lab-text {{ text-align: center; }}
 }}
 </style>
 
@@ -319,6 +361,14 @@ header[data-testid="stHeader"], #MainMenu, footer {{
         <div class="kiosk-stat-label">Of climate record</div>
       </div>
     </div>
+
+    {f'''<div class="kiosk-lab-strip">
+      <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the interactive salinity lab"></div>
+      <div class="kiosk-lab-text">
+        <div class="kiosk-lab-title">🧪 Try the interactive salinity lab</div>
+        <div class="kiosk-lab-sub">Release treated water and watch it move through the aquifer — on your phone</div>
+      </div>
+    </div>''' if qr_lab_data_uri else ''}
 
     <div class="kiosk-footer">
       {DASHBOARD_URL.replace("https://", "")} &nbsp;·&nbsp; Texas Tech University
