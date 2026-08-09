@@ -78,9 +78,19 @@ These inputs can produce substantially different downstream and groundwater resp
 A companion teaching tool (embedded below) lets you explore release strategy across the Pecos's **5 major dams** — Santa Rosa, Sumner, Brantley, Avalon, and Red Bluff — using their real 2000–2020 management history from the SWAT+gwflow reservoir model:
 
 - **Reservoir Map** — real dam locations, sized and colored by mean annual release.
-- **Flow & Management** — set your own release policy for any dam (or load a one-click scenario) and watch the river respond.
+- **Flow & Management** — set your own release policy for any dam, or load a one-click scenario, and watch the river respond.
 - **Where to Place Reuse Water** — drag a candidate reuse site along the river; the reach lights up green / yellow / red.
 - **Salinity & Fish** — cross-references release choices against documented natural salinity sources and the Pecos pupfish's verified range.
+
+The **Flow & Management** tab ships with 5 one-click scenarios so you don't have to start from a blank slate:
+
+- **Reset to history** — no changes; shows exactly what the 5 dams actually did, 2000–2020.
+- **2011–13 drought, unchanged** — jumps the timeline to the real New Mexico/Texas drought, historical policy — see how the system held up (or didn't) under real stress.
+- **Guarantee minimum flow, everywhere** — applies a minimum-instream-flow floor across all 5 dams at once.
+- **Protect the Avalon → Red Bluff reach** — a targeted policy for the stretch closest to the candidate reuse zone.
+- **Release 30% more, everywhere** — stress-tests the system against a basin-wide 30% release increase.
+
+Every dam can also be adjusted individually — turn on a custom rule, scale its release up or down, or set a guaranteed minimum floor — to build a policy that isn't one of the five presets.
 
 🚧 **Status**: research prototype. The "dilution capacity" shown here is a simplified stand-in — once the Pecos salinity-transport model is finished (see [Hydrology](/Hydrology) status), it will be replaced by reach-by-reach simulated salt transport from the [Salinity Lab](/Water_Quality), closing the loop between reservoir management and where reuse water is actually safe to place.
 
