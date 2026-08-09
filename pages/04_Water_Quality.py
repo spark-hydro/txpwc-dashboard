@@ -8,6 +8,7 @@ from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.utils.content import load_water_quality, get_water_quality_path
 from core.utils.page_content import build_outline_and_html, render_floating_outline
+from core.utils.visual_kit import HeroStat, render_hero_stats
 
 
 # Page config
@@ -29,6 +30,15 @@ toc, rendered_md = build_outline_and_html(md_text, md_file_path)
 
 # Show floating outline
 st.html(render_floating_outline(toc))
+
+# Headline results from the April 2026 pilot report, shown before the prose.
+if context.basin_id == "Pecos":
+    render_hero_stats([
+        HeroStat("99.7%", "Of salt removed — 131,000 → 352 mg/L TDS"),
+        HeroStat("99%", "Of ammonia removed — 620 → 6.46 mg/L NH₃"),
+        HeroStat("Not detected", "PFAS at every treatment stage (EPA Method 1633)"),
+        HeroStat("89%", "Non-toxic in WET testing at 100% treated water"),
+    ])
 
 # Render content
 st.markdown(rendered_md, unsafe_allow_html=True)

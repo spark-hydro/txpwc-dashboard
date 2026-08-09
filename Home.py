@@ -5,6 +5,7 @@ from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
 from core.utils.kiosk import is_kiosk_mode, render_kiosk
+from core.utils.visual_kit import Card, HeroStat, render_cards, render_cta, render_hero_stats
 from pathlib import Path
 import re
 
@@ -185,7 +186,56 @@ st.html(f"""
 
 
 # -----------------------------
+# Hook: proof numbers, then the one thing we want visitors to actually touch
+# -----------------------------
+render_hero_stats([
+    HeroStat("99.7%", "Of salt removed in pilot testing — 131,000 → 352 mg/L"),
+    HeroStat("Not detected", "PFAS at every stage of treatment (EPA Method 1633)"),
+    HeroStat("121,404 km²", "Of the Pecos Basin represented in the model"),
+    HeroStat("1,110", "Climate stations feeding the simulations"),
+])
+
+render_cta(
+    "🧪",
+    "Try the contaminant-transport lab",
+    "Release treated water into the Pecos yourself and watch salt, PFAS, and ammonia "
+    "move at completely different speeds through the aquifer. Runs on your phone.",
+    "https://josephauresy.github.io/pecos-salinity-lab/",
+    "Open the lab ↗",
+)
+
+# -----------------------------
 # Render main content
 # -----------------------------
 # Use unsafe_allow_html because headings contain custom <h*> with id anchors
 st.markdown(rendered_md, unsafe_allow_html=True)
+
+# -----------------------------
+# Why this matters, per audience
+# -----------------------------
+st.subheader("What this means for you")
+render_cards([
+    Card(
+        "🚜", "If you farm or ranch here",
+        "Treated produced water is a potential new irrigation supply in a basin where "
+        "flow has fallen more than 75%. The model tests whether it can be delivered at "
+        "a salinity your crops and soils can actually tolerate.",
+    ),
+    Card(
+        "🛢️", "If you operate in the Permian",
+        "Every barrel reused is a barrel not disposed of. This work builds the technical "
+        "evidence for where reuse is defensible — and where it is not.",
+    ),
+    Card(
+        "🏛️", "If you write or enforce the rules",
+        "SB601 asked whether beneficial reuse is feasible. This is the modeling that "
+        "turns that question into numbers: what reaches the river, what reaches the "
+        "aquifer, and under which release strategies.",
+    ),
+    Card(
+        "🐟", "If you care about the river",
+        "The Pecos is already among the saltiest rivers in the country and supports an "
+        "endangered fish. Any reuse plan has to be shown not to make that worse — which "
+        "is exactly what these simulations are for.",
+    ),
+])
