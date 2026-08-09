@@ -20,6 +20,7 @@ REPO_URL = "https://github.com/spark-hydro/txpwc-dashboard"
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 QR_SVG_PATH = ASSETS_DIR / "qr_dashboard.svg"
 QR_LAB_SVG_PATH = ASSETS_DIR / "qr_lab.svg"
+QR_RESERVOIRS_SVG_PATH = ASSETS_DIR / "qr_reservoirs.svg"
 LOGO_PATH = ASSETS_DIR / "logos" / "txpwc.png"
 STATIONS_CATALOG_PATH = (
     Path(__file__).resolve().parents[2] / "noaa_selector" / "data" / "stations_catalog.csv"
@@ -64,6 +65,8 @@ def render_kiosk() -> None:
     qr_data_uri = f"data:image/svg+xml;base64,{qr_b64}" if qr_b64 else ""
     qr_lab_b64 = _load_base64_image(str(QR_LAB_SVG_PATH))
     qr_lab_data_uri = f"data:image/svg+xml;base64,{qr_lab_b64}" if qr_lab_b64 else ""
+    qr_res_b64 = _load_base64_image(str(QR_RESERVOIRS_SVG_PATH))
+    qr_res_data_uri = f"data:image/svg+xml;base64,{qr_res_b64}" if qr_res_b64 else ""
     logo_b64 = _load_base64_image(str(LOGO_PATH))
 
     station_stat = f"{stats['station_count']:,}" if stats["station_count"] else "1,100+"
@@ -185,60 +188,62 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 22px;
-    padding: 48px 56px 40px;
+    gap: 10px;
+    padding: 18px 48px 16px;
     text-align: center;
     animation: kiosk-fade-up 0.9s ease-out;
+    max-height: 94vh;
+    overflow: hidden;
 }}
 
 .kiosk-logo {{
-    height: 64px;
+    height: 44px;
     width: auto;
-    margin-bottom: 4px;
+    margin-bottom: 0;
 }}
 
 .kiosk-title {{
-    font-size: clamp(1.8rem, 3.2vw, 2.75rem);
+    font-size: clamp(1.5rem, 2.6vw, 2.2rem);
     font-weight: 800;
     letter-spacing: 0.01em;
     margin: 0;
     color: #ffffff;
 }}
 .kiosk-subtitle {{
-    font-size: clamp(1rem, 1.5vw, 1.3rem);
+    font-size: clamp(0.9rem, 1.3vw, 1.1rem);
     color: #a9d8e6;
-    margin: -10px 0 6px;
+    margin: -6px 0 2px;
     max-width: 640px;
 }}
 
 .kiosk-qr-wrap {{
     background: #ffffff;
-    border-radius: 24px;
-    padding: 22px;
+    border-radius: 20px;
+    padding: 14px;
     box-shadow: 0 18px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
 }}
 .kiosk-qr-wrap img {{
     display: block;
-    width: clamp(220px, 22vw, 320px);
-    height: clamp(220px, 22vw, 320px);
+    width: clamp(150px, 14vw, 200px);
+    height: clamp(150px, 14vw, 200px);
 }}
 
 .kiosk-scan-label {{
-    font-size: clamp(1.05rem, 1.6vw, 1.4rem);
+    font-size: clamp(0.95rem, 1.3vw, 1.15rem);
     font-weight: 700;
     color: #ffffff;
-    margin-top: 4px;
+    margin-top: 0;
 }}
 .kiosk-scan-sub {{
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: #8fc4d4;
-    margin-top: -8px;
+    margin-top: -6px;
 }}
 
 .kiosk-stats {{
     display: flex;
-    gap: clamp(18px, 4vw, 56px);
-    margin-top: 14px;
+    gap: clamp(14px, 3vw, 40px);
+    margin-top: 6px;
     flex-wrap: wrap;
     justify-content: center;
 }}
@@ -249,21 +254,21 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     min-width: 100px;
 }}
 .kiosk-stat-value {{
-    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    font-size: clamp(1.15rem, 1.9vw, 1.6rem);
     font-weight: 800;
     color: #6ee7d8;
 }}
 .kiosk-stat-label {{
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     color: #9fc9d6;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin-top: 2px;
+    margin-top: 1px;
 }}
 
 .kiosk-footer {{
-    margin-top: 18px;
-    font-size: 0.8rem;
+    margin-top: 8px;
+    font-size: 0.75rem;
     color: #6b98a8;
 }}
 .kiosk-footer a {{
@@ -271,47 +276,57 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     text-decoration: none;
 }}
 
-.kiosk-lab-strip {{
+.kiosk-lab-row {{
+    display: flex;
+    gap: 14px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}}
+.kiosk-lab-item {{
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-top: 8px;
-    padding: 14px 22px;
-    border-radius: 16px;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 14px;
     background: rgba(110, 231, 216, 0.08);
     border: 1px solid rgba(110, 231, 216, 0.35);
+    flex: 1 1 280px;
+    max-width: 320px;
 }}
 .kiosk-lab-qr {{
     background: #ffffff;
-    border-radius: 10px;
-    padding: 6px;
+    border-radius: 8px;
+    padding: 5px;
     flex-shrink: 0;
     line-height: 0;
 }}
 .kiosk-lab-qr img {{
     display: block;
-    width: 84px;
-    height: 84px;
+    width: 58px;
+    height: 58px;
 }}
 .kiosk-lab-text {{
     text-align: left;
 }}
 .kiosk-lab-title {{
-    font-size: 1.05rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: #ffffff;
+    line-height: 1.25;
 }}
 .kiosk-lab-sub {{
-    font-size: 0.85rem;
+    font-size: 0.72rem;
     color: #a9d8e6;
-    margin-top: 2px;
+    margin-top: 1px;
+    line-height: 1.3;
 }}
 
 @media (max-width: 700px) {{
-    .kiosk-card {{ padding: 32px 20px 28px; gap: 16px; }}
-    .kiosk-stats {{ gap: 20px; }}
-    .kiosk-lab-strip {{ flex-direction: column; text-align: center; }}
-    .kiosk-lab-text {{ text-align: center; }}
+    .kiosk-card {{ padding: 20px 16px 18px; gap: 10px; }}
+    .kiosk-stats {{ gap: 14px; }}
+    .kiosk-lab-row {{ flex-direction: column; align-items: stretch; }}
+    .kiosk-lab-item {{ max-width: none; }}
 }}
 </style>
 
@@ -362,13 +377,22 @@ header[data-testid="stHeader"], #MainMenu, footer {{
       </div>
     </div>
 
-    {f'''<div class="kiosk-lab-strip">
-      <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the interactive salinity lab"></div>
-      <div class="kiosk-lab-text">
-        <div class="kiosk-lab-title">🧪 Try the interactive salinity lab</div>
-        <div class="kiosk-lab-sub">Release treated water and watch it move through the aquifer — on your phone</div>
-      </div>
-    </div>''' if qr_lab_data_uri else ''}
+    <div class="kiosk-lab-row">
+      {f'''<div class="kiosk-lab-item">
+        <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the interactive salinity lab"></div>
+        <div class="kiosk-lab-text">
+          <div class="kiosk-lab-title">🧪 Salinity lab</div>
+          <div class="kiosk-lab-sub">Release water, watch it move through the aquifer</div>
+        </div>
+      </div>''' if qr_lab_data_uri else ''}
+      {f'''<div class="kiosk-lab-item">
+        <div class="kiosk-lab-qr"><img src="{qr_res_data_uri}" alt="QR code to the interactive reservoir release lab"></div>
+        <div class="kiosk-lab-text">
+          <div class="kiosk-lab-title">🌊 Reservoir lab</div>
+          <div class="kiosk-lab-sub">Manage 5 real Pecos dams &amp; site reuse water</div>
+        </div>
+      </div>''' if qr_res_data_uri else ''}
+    </div>
 
     <div class="kiosk-footer">
       {DASHBOARD_URL.replace("https://", "")} &nbsp;·&nbsp; Texas Tech University
