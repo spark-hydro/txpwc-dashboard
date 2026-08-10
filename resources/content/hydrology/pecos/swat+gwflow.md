@@ -2,57 +2,39 @@
 
 ## Overview
 
-This page summarizes the hydrologic behavior of the Pecos River Basin under baseline and produced water application scenarios. The main focus is on streamflow, baseflow, groundwater–surface water interaction, and spatial and temporal variability across the watershed.
+The Pecos River is declining, naturally hypersaline, and still capable of catastrophic floods — exactly what makes it a demanding, credible test basin for produced-water reuse. SWAT+gwflow is currently calibrated for streamflow across the basin; reservoir operations and a salinity-transport module are next — see **Status**.
 
-## Hydrologic Focus
+## What This Page Covers
 
-The hydrology analysis is intended to support:
+- **Streamflow** — daily-to-seasonal variability, high/low-flow periods, upstream vs. downstream differences, and the current observed-vs-simulated fit *(Basin Indicators, below)*
+- **Baseflow & groundwater** — gaining/losing reaches and groundwater's contribution to streamflow *(Basin Indicators, below)*
+- **Climate drivers** — precipitation, temperature, and wet/dry variability are covered in depth on [Climate Analysis](/Climate_Analysis)
 
-- Historical streamflow evaluation at key stations  
-- Comparison of simulated and observed flow behavior  
-- Assessment of low-flow and baseflow conditions  
-- Evaluation of groundwater contributions to streamflow  
-- Basin-scale response under alternative management scenarios  
+## Status
 
-## Streamflow Dynamics
+**Now:** SWAT+gwflow is calibrated for streamflow across the Pecos Basin — see **Model Calibration** below for the ensemble, and **Basin Indicators** further down for the current observed-vs-simulated fit.
 
-Streamflow in the Pecos River Basin varies across space and time due to climate forcing, watershed characteristics, channel routing, and groundwater interaction. This page can be used to examine:
+🚧 **Next:**
 
-- Daily, monthly, and seasonal flow variability  
-- High-flow and low-flow periods  
-- Upstream and downstream flow differences  
-- Hydrologic response to produced water release scenarios  
+- Add reservoir/dam operations to the model — Red Bluff Reservoir has lost roughly 20,400 acre-ft of its original 310,000 acre-ft capacity to sedimentation since it was built in 1936 ([TWDB volumetric survey](https://www.twdb.texas.gov/hydro_survey/redbluff/2011-11/RedBluff2011_FinalReport.pdf)), which the reservoir module will need to account for  
+- Add a salinity transport module  
+- Recalibrate against streamflow **and** salinity observations  
+- Simulate produced-water release scenarios: how streamflow and salinity/contaminant concentrations change and distribute downstream and into groundwater
 
-## Baseflow and Groundwater Interaction
+## Model Calibration
 
-Groundwater–surface water interaction is an important component of the Pecos River system. The hydrology page is intended to help evaluate:
+Getting the physical model right comes first. The Pecos SWAT+gwflow model is calibrated against observed streamflow using PEST++, running thousands of parameter realizations and narrowing them down to the set that best matches real observations.
 
-- Baseflow contribution to streamflow  
-- Gaining and losing stream reaches  
-- Temporal changes in groundwater discharge  
-- Potential hydrologic impacts of release timing and location  
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
 
-## Climate and Hydrologic Variability
+*Flow-duration curve from the PEST++ calibration ensemble: gray lines are individual parameter realizations, the green band is the optimum subset, the blue line is the best-performing realization, and the magenta line is the calibrated baseline — together showing how the model converges toward the observations. Tap / click to zoom.*
 
-Hydrologic conditions are influenced by climate variability and forcing inputs used in the model. This section can be expanded to include:
+<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
 
-- Precipitation and temperature summaries  
-- Historical climate patterns  
-- Future climate projection summaries  
-- Hydrologic sensitivity to wet and dry periods  
+*Multi-objective calibration trade-off space (PESTPP-MOU): each point is one parameter realization scored against two competing calibration objectives. Gray points are the prior, untested set; the blue and magenta clusters are posterior realizations retained after conditioning on observations. The same PESTPP-MOU workflow will later be reused to rank candidate release and irrigation-reuse strategies once the scenario model is in place — see [Scenarios](/Scenarios). Tap / click to zoom.*
 
-## Planned Dashboard Functions
+(Geochemical parameter calibration — salt mineral fraction and major ions — is underway separately; see [Water Quality](/Water_Quality).)
 
-This page can support:
+## Regional Context: Why the Pecos Is Different
 
-- Historical hydrographs at selected stations  
-- Basin-wide hydrologic maps  
-- Flow duration and low-flow analysis  
-- Comparison across baseline and scenario runs  
-- Climate and flow summary plots  
-
-## Planned Visuals
-
-![Hydrology placeholder](images/hydrology_placeholder.png)
-
-*Figure. Placeholder for hydrographs, hydrologic maps, climate summaries, or groundwater–surface water interaction plots.*
+The Pecos is one of the most intensively studied rivers in the American Southwest — for the same reasons this project exists.

@@ -13,18 +13,21 @@ def get_basin_dir(resources_dir: Path, basin_id: str) -> Path:
     return resources_dir / "txpwc" / "basins" / basin_id
 
 
+@st.cache_data
 def read_streamflow_observed(basin_dir: Path) -> pd.DataFrame:
     df = read_csv(basin_dir / "streamflow_observed.csv", parse_dates=["date"])
     df = df.rename(columns={"flow": "flow_obs"})
     return df.sort_values("date").reset_index(drop=True)
 
 
+@st.cache_data
 def read_streamflow_simulated(basin_dir: Path, scenario_id: str) -> pd.DataFrame:
     df = read_csv(basin_dir / f"streamflow_simulated_{scenario_id}.csv", parse_dates=["date"])
     df = df.rename(columns={"flow": "flow_sim"})
     return df.sort_values("date").reset_index(drop=True)
 
 
+@st.cache_data
 def read_groundwater(basin_dir: Path) -> pd.DataFrame:
     path = basin_dir / "groundwater.csv"
     if not path.exists():
@@ -51,6 +54,7 @@ def join_streamflow(observed: pd.DataFrame, simulated: pd.DataFrame) -> pd.DataF
     merged = observed.merge(simulated, on="date", how="outer")
     return merged.sort_values("date").reset_index(drop=True)
 
+@st.cache_data
 def read_subbasins_geojson(basin_dir: Path) -> dict | None:
     geojson_path = basin_dir / "spatial" / "subbasins.geojson"
 
@@ -60,6 +64,7 @@ def read_subbasins_geojson(basin_dir: Path) -> dict | None:
     with geojson_path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
+@st.cache_data
 def read_stations_geojson(basin_dir: Path) -> dict | None:
     geojson_path = basin_dir / "spatial" / "stations.geojson"
 
@@ -69,6 +74,7 @@ def read_stations_geojson(basin_dir: Path) -> dict | None:
     with geojson_path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
+@st.cache_data
 def read_station_timeseries(basin_dir: Path) -> pd.DataFrame:
     path = basin_dir / "station_timeseries.csv"
 

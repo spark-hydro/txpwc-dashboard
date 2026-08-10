@@ -2,61 +2,20 @@
 
 ## Overview
 
-This page describes how data-driven and machine-learning methods can complement the physically based Pecos River TxPWC modeling framework.
+A full physics-based run of SWAT+gwflow is expensive. When a stakeholder asks *"what if we released here instead, in August, at half the volume?"*, waiting on a complete simulation for every variation doesn't scale.
 
-The goal is not to replace SWAT+gwflow, but to enhance model analysis, accelerate scenario evaluation, and improve insight extraction from simulation and observation datasets.
+Machine learning is the shortcut — **not a replacement for SWAT+gwflow, but a fast approximation trained on it.** Learn from the runs already completed, then screen hundreds of alternatives in the time one full simulation would take, and send only the promising ones to the physical model.
 
-## Potential Applications
+## What's Planned
 
-The data-driven component can support several practical applications:
+🚧 **Nothing on this page is running yet.** The cards below are the intended data-driven layer, built once the reservoir and salinity modules are in place.
 
-- Surrogate modeling to emulate SWAT+gwflow outputs for rapid scenario evaluation
-- Residual learning to correct model errors and improve prediction accuracy
-- Spatiotemporal prediction to capture flow and salinity dynamics
-- Feature importance analysis to identify dominant hydrologic and water quality drivers
-- Scenario risk classification to predict threshold exceedance under alternative strategies
+## What It Would Learn From
 
-## Why It Is Useful
+**Inputs:** precipitation · temperature · upstream flow · release amount and timing · basin and reach attributes · simulated states from SWAT+gwflow
 
-Machine-learning methods can help when:
+**Outputs:** streamflow at selected stations · salinity and constituent concentrations · residual corrections · threshold-exceedance probabilities
 
-- Full process-based simulations are computationally expensive
-- Many alternative scenarios must be screened quickly
-- Model bias varies across stations or hydrologic regimes
-- Complex nonlinear relationships are difficult to interpret directly
+## Status
 
-## Example Inputs and Outputs
-
-Potential input variables include:
-
-- Precipitation
-- Temperature
-- Upstream flow
-- Release amount
-- Release timing
-- Basin and reach attributes
-- Simulated states from SWAT+gwflow
-
-Potential outputs include:
-
-- Streamflow at selected stations
-- Salinity or constituent concentrations
-- Residual correction terms
-- Threshold exceedance probabilities
-- Fast scenario-response estimates
-
-## Dashboard Use
-
-This page can later support:
-
-- ML workflow summaries
-- Predictor importance plots
-- Observed vs simulated vs corrected results
-- Risk classification outputs
-- Fast-response surrogate scenario tools
-
-## Planned Visuals
-
-![Data-driven placeholder](images/data_driven_placeholder.png)
-
-*Figure. Placeholder for machine-learning workflow diagrams, feature importance plots, and surrogate-model results.*
+🚧 **Planned** — this page populates once the reservoir and salinity modules are added to the calibrated SWAT+gwflow model (see [Hydrology](/Hydrology) and [Scenarios](/Scenarios)), giving the surrogate real scenario output to train on.

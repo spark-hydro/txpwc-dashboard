@@ -4,7 +4,7 @@ from pathlib import Path
 MODEL_MAP = {
     "SWAT+ gwflow": "swat+gwflow",
     "SWAT+": "swat+",
-    "ARMS": "arms",
+    "AMRS": "amrs",
 }
 
 

@@ -4,6 +4,8 @@ from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
+from core.utils.kiosk import is_kiosk_mode, render_kiosk
+from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
 from pathlib import Path
 import re
 
@@ -15,6 +17,12 @@ st.set_page_config(
     page_icon=APP_ICON,
     layout="wide",
 )
+
+# Poster-session display mode: open the app with ?kiosk=1 to show a
+# full-screen QR landing page instead of the normal Home content.
+if is_kiosk_mode():
+    render_kiosk()
+    st.stop()
 
 # If the floating box overlaps content, add this
 # st.markdown("""
@@ -178,20 +186,53 @@ st.html(f"""
 
 
 # -----------------------------
+# Hook: a real photo, then proof numbers from the pilot report
+# -----------------------------
+render_photo_banner(
+    "pecos_river_highbridge.jpg",
+    "The Pecos River, looking downstream toward the Rio Grande confluence near Comstock, TX. "
+    "<b>Photo: Natalie Houston, USGS (public domain).</b>",
+)
+
+render_hero_stats([
+    HeroStat("99.7%", "Of salt removed in pilot testing — 131,000 → 352 mg/L"),
+    HeroStat("8×", "Saltier than seawater at the Malaga Bend brine springs"),
+    HeroStat("121,404 km²", "Of the Pecos Basin represented in the model"),
+    HeroStat("1,110", "Climate stations feeding the simulations"),
+])
+
+# -----------------------------
 # Render main content
 # -----------------------------
 # Use unsafe_allow_html because headings contain custom <h*> with id anchors
 st.markdown(rendered_md, unsafe_allow_html=True)
 
-#
 # -----------------------------
-# Current selection (debug/info)
+# Why this matters, per audience
 # -----------------------------
-st.subheader("Current selection")
-st.write(
-    {
-        "basin_id": context.basin_id,
-        "model_type": context.model_type,
-        "scenario_id": context.scenario_id,
-    }
-)
+st.subheader("What this means for you")
+render_cards([
+    Card(
+        "🚜", "If you farm or ranch here",
+        "Treated produced water is a potential new irrigation supply in a basin where "
+        "flow has fallen more than 75%. The model tests whether it can be delivered at "
+        "a salinity your crops and soils can actually tolerate.",
+    ),
+    Card(
+        "🛢️", "If you operate in the Permian",
+        "Every barrel reused is a barrel not disposed of. This work builds the technical "
+        "evidence for where reuse is defensible — and where it is not.",
+    ),
+    Card(
+        "🏛️", "If you write or enforce the rules",
+        "SB601 asked whether beneficial reuse is feasible. This is the modeling that "
+        "turns that question into numbers: what reaches the river, what reaches the "
+        "aquifer, and under which release strategies.",
+    ),
+    Card(
+        "🐟", "If you care about the river",
+        "The Pecos is already among the saltiest rivers in the country and supports an "
+        "endangered fish. Any reuse plan has to be shown not to make that worse — which "
+        "is exactly what these simulations are for.",
+    ),
+])
