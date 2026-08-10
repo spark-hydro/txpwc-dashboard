@@ -15,6 +15,7 @@ import streamlit as st
 
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
 LAB_URL = "https://josephauresy.github.io/pecos-salinity-lab/"
+RESERVOIR_LAB_URL = "https://josephauresy.github.io/pecos-reservoirs/"
 REPO_URL = "https://github.com/spark-hydro/txpwc-dashboard"
 
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
@@ -54,8 +55,25 @@ def _load_base64_image(path_str: str) -> str:
     return base64.b64encode(path.read_bytes()).decode()
 
 
-def is_kiosk_mode() -> bool:
-    return st.query_params.get("kiosk") is not None
+def should_show_kiosk() -> bool:
+    """The kiosk is the front door; entering the dashboard is explicit and sticky.
+
+    - ``/``            -> kiosk (first visit of a browser session)
+    - ``/?app=1``      -> dashboard, and remembered for the rest of the session, so
+                          the sidebar's "Home" link doesn't bounce back to the splash
+    - ``/?kiosk=1``    -> force the kiosk back up (presenter resetting the display)
+    """
+    params = st.query_params
+
+    if params.get("kiosk") is not None:
+        st.session_state["entered_app"] = False
+        return True
+
+    if params.get("app") is not None:
+        st.session_state["entered_app"] = True
+        return False
+
+    return not st.session_state.get("entered_app", False)
 
 
 def render_kiosk() -> None:
@@ -217,10 +235,17 @@ header[data-testid="stHeader"], #MainMenu, footer {{
 }}
 
 .kiosk-qr-wrap {{
+    display: block;
     background: #ffffff;
     border-radius: 20px;
     padding: 14px;
     box-shadow: 0 18px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
+    line-height: 0;
+    transition: transform .15s ease, box-shadow .15s ease;
+}}
+a.kiosk-qr-wrap:hover {{
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.5), 0 0 0 3px rgba(110,231,216,0.55);
 }}
 .kiosk-qr-wrap img {{
     display: block;
@@ -238,6 +263,35 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     font-size: 0.85rem;
     color: #8fc4d4;
     margin-top: -6px;
+}}
+
+.kiosk-enter {{
+    display: inline-block;
+    margin-top: 2px;
+    padding: 9px 26px;
+    border-radius: 999px;
+    background: #6ee7d8;
+    color: #04121c !important;
+    font-weight: 800;
+    font-size: 0.92rem;
+    text-decoration: none !important;
+    transition: transform .15s ease, box-shadow .15s ease;
+    box-shadow: 0 6px 18px rgba(110,231,216,0.25);
+}}
+.kiosk-enter:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(110,231,216,0.4);
+}}
+
+a.kiosk-lab-item {{
+    text-decoration: none !important;
+    color: inherit !important;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}}
+a.kiosk-lab-item:hover {{
+    transform: translateY(-3px);
+    border-color: rgba(110,231,216,0.85);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
 }}
 
 .kiosk-stats {{
@@ -356,11 +410,13 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     <h1 class="kiosk-title">Texas Produced Water Consortium</h1>
     <p class="kiosk-subtitle">Interactive hydrologic modeling &amp; data dashboard — Pecos River Basin</p>
 
-    <div class="kiosk-qr-wrap">
+    <a class="kiosk-qr-wrap" href="?app=1">
       {f'<img src="{qr_data_uri}" alt="QR code to the TxPWC dashboard">' if qr_data_uri else ''}
-    </div>
+    </a>
     <div class="kiosk-scan-label">📱 Scan to explore on your phone</div>
-    <div class="kiosk-scan-sub">Escanea para explorar en tu celular</div>
+    <div class="kiosk-scan-sub">Escanea para explorar en tu celular · or click anything on this page</div>
+
+    <a class="kiosk-enter" href="?app=1">Enter the dashboard →</a>
 
     <div class="kiosk-stats">
       <div class="kiosk-stat">
@@ -378,20 +434,20 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     </div>
 
     <div class="kiosk-lab-row">
-      {f'''<div class="kiosk-lab-item">
+      {f'''<a class="kiosk-lab-item" href="{LAB_URL}" target="_blank" rel="noopener">
         <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the interactive salinity lab"></div>
         <div class="kiosk-lab-text">
           <div class="kiosk-lab-title">🧪 Salinity lab</div>
           <div class="kiosk-lab-sub">Release water, watch it move through the aquifer</div>
         </div>
-      </div>''' if qr_lab_data_uri else ''}
-      {f'''<div class="kiosk-lab-item">
+      </a>''' if qr_lab_data_uri else ''}
+      {f'''<a class="kiosk-lab-item" href="{RESERVOIR_LAB_URL}" target="_blank" rel="noopener">
         <div class="kiosk-lab-qr"><img src="{qr_res_data_uri}" alt="QR code to the interactive reservoir release lab"></div>
         <div class="kiosk-lab-text">
           <div class="kiosk-lab-title">🌊 Reservoir lab</div>
           <div class="kiosk-lab-sub">Manage 5 real Pecos dams &amp; site reuse water</div>
         </div>
-      </div>''' if qr_res_data_uri else ''}
+      </a>''' if qr_res_data_uri else ''}
     </div>
 
     <div class="kiosk-footer">
