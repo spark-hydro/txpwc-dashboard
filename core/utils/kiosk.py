@@ -23,6 +23,8 @@ QR_SVG_PATH = ASSETS_DIR / "qr_dashboard.svg"
 QR_LAB_SVG_PATH = ASSETS_DIR / "qr_lab.svg"
 QR_RESERVOIRS_SVG_PATH = ASSETS_DIR / "qr_reservoirs.svg"
 LOGO_PATH = ASSETS_DIR / "logos" / "txpwc.png"
+LOGO_WATER_CENTER_PATH = ASSETS_DIR / "logos" / "water_center.png"
+LOGO_IHYDRO_PATH = ASSETS_DIR / "logos" / "ihydro_lab.png"
 STATIONS_CATALOG_PATH = (
     Path(__file__).resolve().parents[2] / "noaa_selector" / "data" / "stations_catalog.csv"
 )
@@ -86,6 +88,8 @@ def render_kiosk() -> None:
     qr_res_b64 = _load_base64_image(str(QR_RESERVOIRS_SVG_PATH))
     qr_res_data_uri = f"data:image/svg+xml;base64,{qr_res_b64}" if qr_res_b64 else ""
     logo_b64 = _load_base64_image(str(LOGO_PATH))
+    logo_water_center_b64 = _load_base64_image(str(LOGO_WATER_CENTER_PATH))
+    logo_ihydro_b64 = _load_base64_image(str(LOGO_IHYDRO_PATH))
 
     station_stat = f"{stats['station_count']:,}" if stats["station_count"] else "1,100+"
     record_stat = f"{stats['record_years']}+ yrs" if stats["record_years"] else "170+ yrs"
@@ -214,10 +218,36 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     overflow: hidden;
 }}
 
-.kiosk-logo {{
-    height: 44px;
+.kiosk-logo-row {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}}
+.kiosk-logo-chip {{
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}}
+.kiosk-logo-row img {{
+    height: 34px;
     width: auto;
-    margin-bottom: 0;
+    display: block;
+}}
+.kiosk-logo-row img.kiosk-logo-txpwc {{
+    height: 40px;
+}}
+
+@media (max-width: 700px) {{
+    .kiosk-logo-row {{ gap: 10px; }}
+    .kiosk-logo-chip {{ padding: 6px 10px; border-radius: 10px; }}
+    .kiosk-logo-row img {{ height: 26px; }}
+    .kiosk-logo-row img.kiosk-logo-txpwc {{ height: 30px; }}
 }}
 
 .kiosk-title {{
@@ -406,7 +436,11 @@ a.kiosk-lab-item:hover {{
   </div>
 
   <div class="kiosk-card">
-    {f'<img class="kiosk-logo" src="data:image/png;base64,{logo_b64}" alt="TxPWC logo">' if logo_b64 else ''}
+    <div class="kiosk-logo-row">
+      {f'<div class="kiosk-logo-chip"><img class="kiosk-logo-txpwc" src="data:image/png;base64,{logo_b64}" alt="TxPWC logo"></div>' if logo_b64 else ''}
+      {f'<div class="kiosk-logo-chip"><img src="data:image/png;base64,{logo_water_center_b64}" alt="Water &amp; the Environment Research Center logo"></div>' if logo_water_center_b64 else ''}
+      {f'<div class="kiosk-logo-chip"><img src="data:image/png;base64,{logo_ihydro_b64}" alt="iHydro Lab logo"></div>' if logo_ihydro_b64 else ''}
+    </div>
     <h1 class="kiosk-title">Texas Produced Water Consortium</h1>
     <p class="kiosk-subtitle">Interactive hydrologic modeling &amp; data dashboard — Pecos River Basin</p>
 
