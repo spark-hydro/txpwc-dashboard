@@ -15,6 +15,7 @@ import streamlit as st
 
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
 LAB_URL = "https://josephauresy.github.io/pecos-salinity-lab/"
+RESERVOIR_LAB_URL = "https://josephauresy.github.io/pecos-reservoirs/"
 REPO_URL = "https://github.com/spark-hydro/txpwc-dashboard"
 
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
@@ -22,6 +23,8 @@ QR_SVG_PATH = ASSETS_DIR / "qr_dashboard.svg"
 QR_LAB_SVG_PATH = ASSETS_DIR / "qr_lab.svg"
 QR_RESERVOIRS_SVG_PATH = ASSETS_DIR / "qr_reservoirs.svg"
 LOGO_PATH = ASSETS_DIR / "logos" / "txpwc.png"
+LOGO_WATER_CENTER_PATH = ASSETS_DIR / "logos" / "water_center.png"
+LOGO_IHYDRO_PATH = ASSETS_DIR / "logos" / "ihydro_lab.png"
 STATIONS_CATALOG_PATH = (
     Path(__file__).resolve().parents[2] / "noaa_selector" / "data" / "stations_catalog.csv"
 )
@@ -54,8 +57,25 @@ def _load_base64_image(path_str: str) -> str:
     return base64.b64encode(path.read_bytes()).decode()
 
 
-def is_kiosk_mode() -> bool:
-    return st.query_params.get("kiosk") is not None
+def should_show_kiosk() -> bool:
+    """The kiosk is the front door; entering the dashboard is explicit and sticky.
+
+    - ``/``            -> kiosk (first visit of a browser session)
+    - ``/?app=1``      -> dashboard, and remembered for the rest of the session, so
+                          the sidebar's "Home" link doesn't bounce back to the splash
+    - ``/?kiosk=1``    -> force the kiosk back up (presenter resetting the display)
+    """
+    params = st.query_params
+
+    if params.get("kiosk") is not None:
+        st.session_state["entered_app"] = False
+        return True
+
+    if params.get("app") is not None:
+        st.session_state["entered_app"] = True
+        return False
+
+    return not st.session_state.get("entered_app", False)
 
 
 def render_kiosk() -> None:
@@ -68,6 +88,8 @@ def render_kiosk() -> None:
     qr_res_b64 = _load_base64_image(str(QR_RESERVOIRS_SVG_PATH))
     qr_res_data_uri = f"data:image/svg+xml;base64,{qr_res_b64}" if qr_res_b64 else ""
     logo_b64 = _load_base64_image(str(LOGO_PATH))
+    logo_water_center_b64 = _load_base64_image(str(LOGO_WATER_CENTER_PATH))
+    logo_ihydro_b64 = _load_base64_image(str(LOGO_IHYDRO_PATH))
 
     station_stat = f"{stats['station_count']:,}" if stats["station_count"] else "1,100+"
     record_stat = f"{stats['record_years']}+ yrs" if stats["record_years"] else "170+ yrs"
@@ -196,10 +218,38 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     overflow: hidden;
 }}
 
-.kiosk-logo {{
-    height: 44px;
+.kiosk-logo-row {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}}
+.kiosk-logo-chip {{
+    background: #ffffff;
+    border-radius: 12px;
+    width: 116px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    flex-shrink: 0;
+}}
+.kiosk-logo-chip img {{
+    display: block;
+    max-width: 88px;
+    max-height: 46px;
     width: auto;
-    margin-bottom: 0;
+    height: auto;
+    object-fit: contain;
+}}
+
+@media (max-width: 700px) {{
+    .kiosk-logo-row {{ gap: 10px; }}
+    .kiosk-logo-chip {{ width: 88px; height: 50px; border-radius: 10px; }}
+    .kiosk-logo-chip img {{ max-width: 68px; max-height: 34px; }}
 }}
 
 .kiosk-title {{
@@ -217,10 +267,17 @@ header[data-testid="stHeader"], #MainMenu, footer {{
 }}
 
 .kiosk-qr-wrap {{
+    display: block;
     background: #ffffff;
     border-radius: 20px;
     padding: 14px;
     box-shadow: 0 18px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
+    line-height: 0;
+    transition: transform .15s ease, box-shadow .15s ease;
+}}
+a.kiosk-qr-wrap:hover {{
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.5), 0 0 0 3px rgba(110,231,216,0.55);
 }}
 .kiosk-qr-wrap img {{
     display: block;
@@ -238,6 +295,35 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     font-size: 0.85rem;
     color: #8fc4d4;
     margin-top: -6px;
+}}
+
+.kiosk-enter {{
+    display: inline-block;
+    margin-top: 2px;
+    padding: 9px 26px;
+    border-radius: 999px;
+    background: #6ee7d8;
+    color: #04121c !important;
+    font-weight: 800;
+    font-size: 0.92rem;
+    text-decoration: none !important;
+    transition: transform .15s ease, box-shadow .15s ease;
+    box-shadow: 0 6px 18px rgba(110,231,216,0.25);
+}}
+.kiosk-enter:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(110,231,216,0.4);
+}}
+
+a.kiosk-lab-item {{
+    text-decoration: none !important;
+    color: inherit !important;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}}
+a.kiosk-lab-item:hover {{
+    transform: translateY(-3px);
+    border-color: rgba(110,231,216,0.85);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
 }}
 
 .kiosk-stats {{
@@ -352,15 +438,21 @@ header[data-testid="stHeader"], #MainMenu, footer {{
   </div>
 
   <div class="kiosk-card">
-    {f'<img class="kiosk-logo" src="data:image/png;base64,{logo_b64}" alt="TxPWC logo">' if logo_b64 else ''}
+    <div class="kiosk-logo-row">
+      {f'<div class="kiosk-logo-chip"><img src="data:image/png;base64,{logo_b64}" alt="TxPWC logo"></div>' if logo_b64 else ''}
+      {f'<div class="kiosk-logo-chip"><img src="data:image/png;base64,{logo_water_center_b64}" alt="Water &amp; the Environment Research Center logo"></div>' if logo_water_center_b64 else ''}
+      {f'<div class="kiosk-logo-chip"><img src="data:image/png;base64,{logo_ihydro_b64}" alt="iHydro Lab logo"></div>' if logo_ihydro_b64 else ''}
+    </div>
     <h1 class="kiosk-title">Texas Produced Water Consortium</h1>
     <p class="kiosk-subtitle">Interactive hydrologic modeling &amp; data dashboard — Pecos River Basin</p>
 
-    <div class="kiosk-qr-wrap">
+    <a class="kiosk-qr-wrap" href="?app=1">
       {f'<img src="{qr_data_uri}" alt="QR code to the TxPWC dashboard">' if qr_data_uri else ''}
-    </div>
+    </a>
     <div class="kiosk-scan-label">📱 Scan to explore on your phone</div>
-    <div class="kiosk-scan-sub">Escanea para explorar en tu celular</div>
+    <div class="kiosk-scan-sub">Escanea para explorar en tu celular · or click anything on this page</div>
+
+    <a class="kiosk-enter" href="?app=1">Enter the dashboard →</a>
 
     <div class="kiosk-stats">
       <div class="kiosk-stat">
@@ -378,20 +470,20 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     </div>
 
     <div class="kiosk-lab-row">
-      {f'''<div class="kiosk-lab-item">
+      {f'''<a class="kiosk-lab-item" href="{LAB_URL}" target="_blank" rel="noopener">
         <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the interactive salinity lab"></div>
         <div class="kiosk-lab-text">
           <div class="kiosk-lab-title">🧪 Salinity lab</div>
           <div class="kiosk-lab-sub">Release water, watch it move through the aquifer</div>
         </div>
-      </div>''' if qr_lab_data_uri else ''}
-      {f'''<div class="kiosk-lab-item">
+      </a>''' if qr_lab_data_uri else ''}
+      {f'''<a class="kiosk-lab-item" href="{RESERVOIR_LAB_URL}" target="_blank" rel="noopener">
         <div class="kiosk-lab-qr"><img src="{qr_res_data_uri}" alt="QR code to the interactive reservoir release lab"></div>
         <div class="kiosk-lab-text">
           <div class="kiosk-lab-title">🌊 Reservoir lab</div>
           <div class="kiosk-lab-sub">Manage 5 real Pecos dams &amp; site reuse water</div>
         </div>
-      </div>''' if qr_res_data_uri else ''}
+      </a>''' if qr_res_data_uri else ''}
     </div>
 
     <div class="kiosk-footer">

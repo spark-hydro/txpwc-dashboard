@@ -4,7 +4,7 @@ from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
-from core.utils.kiosk import is_kiosk_mode, render_kiosk
+from core.utils.kiosk import render_kiosk, should_show_kiosk
 from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
 from pathlib import Path
 import re
@@ -18,9 +18,10 @@ st.set_page_config(
     layout="wide",
 )
 
-# Poster-session display mode: open the app with ?kiosk=1 to show a
-# full-screen QR landing page instead of the normal Home content.
-if is_kiosk_mode():
+# The kiosk splash is the app's front door: "/" shows it, and the QR codes /
+# links on it lead to "/?app=1", which opens the dashboard for the rest of the
+# session. "/?kiosk=1" forces the splash back up for the next visitor.
+if should_show_kiosk():
     render_kiosk()
     st.stop()
 
