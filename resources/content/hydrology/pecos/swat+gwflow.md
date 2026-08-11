@@ -25,11 +25,11 @@ The Pecos River is declining, naturally hypersaline, and still capable of catast
 
 Getting the physical model right comes first. The Pecos SWAT+gwflow model is calibrated against observed streamflow using PEST++, running thousands of parameter realizations and narrowing them down to the set that best matches real observations.
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/fdc_scenarios.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/fdc_scenarios.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/fdc_scenarios.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Flow-duration curve from the PEST++ calibration ensemble: gray lines are individual parameter realizations, the green band is the optimum subset, the blue line is the best-performing realization, and the magenta line is the calibrated baseline — together showing how the model converges toward the observations. Tap / click to zoom.*
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/mou.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/mou.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/mou.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Multi-objective calibration trade-off space (PESTPP-MOU): each point is one parameter realization scored against two competing calibration objectives. Gray points are the prior, untested set; the blue and magenta clusters are posterior realizations retained after conditioning on observations. The same PESTPP-MOU workflow will later be reused to rank candidate release and irrigation-reuse strategies once the scenario model is in place — see [Scenarios](/Scenarios). Tap / click to zoom.*
 

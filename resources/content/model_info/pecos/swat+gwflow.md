@@ -11,7 +11,7 @@ The current Pecos River model domain includes:
 - **Land use classes:** 13  
 - **Soil classes:** 18
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" width="500" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/study_area.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/study_area.png" width="500" style="cursor:zoom-in;"></a></p>
 
 *Figure 1. Pecos River Basin study area and model domain. Tap / click to zoom.*
 
@@ -34,7 +34,7 @@ In this project, the framework is used to simulate:
 - Spatial and temporal variability in watershed response  
 - Potential impacts under alternative release strategies  
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/swat+gwflow_framework.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/swat+gwflow_framework.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Figure 2. SWAT+gwflow conceptual framework used in the Pecos River Basin. Tap / click to zoom.*
 
@@ -55,7 +55,7 @@ The development workflow shown in the presentation includes:
 - Model execution using **SWAT+ executable tools**  
 - Preparation for server-based evaluation and dashboard integration
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/dataset.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/dataset.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Figure 3. Pecos River model setup and preprocessing workflow. Tap / click to zoom.*
 
