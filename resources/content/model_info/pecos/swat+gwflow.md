@@ -5,13 +5,13 @@ The study area is the **Pecos River Basin**, which was selected to evaluate the 
 
 The current Pecos River model domain includes:
 
-- **Watershed area:** approximately 161,070 km²  
+- **Watershed area:** approximately 121,404 km²  
 - **Subbasins:** 460  
 - **HRUs:** 2,874  
 - **Land use classes:** 13  
 - **Soil classes:** 18
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/study_area.png?raw=true" width="500" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/study_area.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/study_area.png" width="500" style="cursor:zoom-in;"></a></p>
 
 *Figure 1. Pecos River Basin study area and model domain. Tap / click to zoom.*
 
@@ -34,7 +34,7 @@ In this project, the framework is used to simulate:
 - Spatial and temporal variability in watershed response  
 - Potential impacts under alternative release strategies  
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/swat+gwflow_framework.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/swat+gwflow_framework.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/swat+gwflow_framework.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Figure 2. SWAT+gwflow conceptual framework used in the Pecos River Basin. Tap / click to zoom.*
 
@@ -55,7 +55,7 @@ The development workflow shown in the presentation includes:
 - Model execution using **SWAT+ executable tools**  
 - Preparation for server-based evaluation and dashboard integration
 
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/dataset.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/dataset.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/dataset.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Figure 3. Pecos River model setup and preprocessing workflow. Tap / click to zoom.*
 
@@ -71,10 +71,7 @@ This is important for the TxPWC project because treated produced water assessmen
 - Land application and irrigation scenarios  
 - Salinity and constituent response under different management conditions
 
-<!-- Placeholder: solute transport schematic -->
-![Solute transport schematic](images/solute_transport_placeholder.png)
-
-*Figure 4. Placeholder for a conceptual diagram of coupled hydrologic and solute transport processes.*
+🚧 **In development** — a conceptual diagram of coupled hydrologic and solute-transport processes is planned for this section.
 
 ## Parameterization and Calibration Uncertainty
 

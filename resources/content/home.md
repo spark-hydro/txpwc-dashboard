@@ -5,11 +5,11 @@ The Texas Produced Water Consortium (TxPWC) was established by SB601 (2021) to e
 The consortium is led by Texas Tech University and brings together a diverse group of stakeholders, including:
 
 ### Texas Tech Research Team
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/research_team.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/research_team.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/research_team.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/research_team.png" width="1000" style="cursor:zoom-in;"></a></p>
 <p align="center"><em><small>🔍 Tap / click the image to view full-size and zoom in on names</small></em></p>
 
 ### Active and diverse stakeholder membership
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/members_enhanced.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/members_enhanced.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/members_enhanced.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/members_enhanced.png" width="1000" style="cursor:zoom-in;"></a></p>
 <p align="center"><em><small>🔍 Tap / click the image to view full-size and zoom in</small></em></p>
 
 - Agriculture and landowners  
@@ -121,7 +121,7 @@ These selections dynamically update all analysis pages.
 ## Dashboard Code Pipeline
 
 The system follows a data-driven pipeline:
-<p align="center"><a href="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/txpwc_code_pipeline.png?raw=true" target="_blank" rel="noopener"><img src="https://github.com/spark-hydro/txpwc-dashboard/blob/main/resources/content/images/txpwc_code_pipeline.png?raw=true" width="1000" style="cursor:zoom-in;"></a></p>
+<p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/txpwc_code_pipeline.png" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/txpwc_code_pipeline.png" width="1000" style="cursor:zoom-in;"></a></p>
 
 *Figure 2. Maps of simulation results from the steady-state MODFLOW model — tap / click to zoom* 
 
