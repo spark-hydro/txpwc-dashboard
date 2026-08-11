@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
 LAB_URL = "https://josephauresy.github.io/pecos-salinity-lab/"
@@ -250,6 +251,13 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     .kiosk-logo-row {{ gap: 10px; }}
     .kiosk-logo-chip {{ width: 88px; height: 50px; border-radius: 10px; }}
     .kiosk-logo-chip img {{ max-width: 68px; max-height: 34px; }}
+
+    /* The one-screen-no-scroll constraint is a desktop/projector thing (fits the
+       poster-session laptop). On a phone, stacking both labs needs more height
+       than fits in one viewport, and scrolling there is normal -- so drop the
+       clip instead of silently hiding the reservoir lab QR below the fold. */
+    .kiosk-root {{ min-height: 100vh; height: auto; overflow: visible; }}
+    .kiosk-card {{ max-height: none; overflow: visible; }}
 }}
 
 .kiosk-title {{
@@ -492,3 +500,94 @@ a.kiosk-lab-item:hover {{
   </div>
 </div>
 """)
+
+    _render_touch_particles()
+
+
+def _render_touch_particles() -> None:
+    """Finger/mouse leaves a short-lived trail of "contaminant" particles on the
+    kiosk background — two fingers, two independent trails. st.html() strips
+    <script> tags (DOMPurify), so this runs as a components.html() iframe that
+    reaches into the parent document (same-origin, confirmed to work) rather
+    than touching the already-tested kiosk markup above.
+    """
+    components.html(
+        """
+<script>
+(function() {
+    const doc = window.parent.document;
+    const root = doc.querySelector('.kiosk-root');
+    if (!root || root.dataset.touchFxAttached) return;
+    root.dataset.touchFxAttached = '1';
+
+    if (!doc.getElementById('kiosk-touch-style')) {
+        const style = doc.createElement('style');
+        style.id = 'kiosk-touch-style';
+        style.textContent = `
+            .kiosk-touch-particle {
+                position: fixed;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 40;
+                transform: translate(-50%, -50%) scale(1);
+                transition: transform 1.15s ease-out, opacity 1.15s ease-out;
+                opacity: 0.85;
+            }
+        `;
+        doc.head.appendChild(style);
+    }
+
+    const palettes = [
+        'radial-gradient(circle, rgba(165,243,252,0.95) 0%, rgba(45,180,190,0.45) 65%, rgba(45,180,190,0) 100%)',
+        'radial-gradient(circle, rgba(240,190,230,0.95) 0%, rgba(190,70,150,0.4) 65%, rgba(190,70,150,0) 100%)',
+    ];
+
+    const activePointers = {};
+    let colorSeq = 0;
+
+    function spawnAt(x, y, colorIdx) {
+        const p = doc.createElement('div');
+        p.className = 'kiosk-touch-particle';
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        p.style.background = palettes[colorIdx % palettes.length];
+        doc.body.appendChild(p);
+        requestAnimationFrame(() => {
+            const dx = (Math.random() - 0.5) * 90;
+            const dy = -50 - Math.random() * 70;
+            p.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.25)`;
+            p.style.opacity = '0';
+        });
+        setTimeout(() => p.remove(), 1300);
+    }
+
+    function onDown(e) {
+        if (!(e.pointerId in activePointers)) {
+            activePointers[e.pointerId] = {last: 0, color: colorSeq++};
+        }
+        spawnAt(e.clientX, e.clientY, activePointers[e.pointerId].color);
+    }
+    function onMove(e) {
+        const st = activePointers[e.pointerId];
+        if (!st) return;
+        const now = performance.now();
+        if (now - st.last < 40) return;
+        st.last = now;
+        spawnAt(e.clientX, e.clientY, st.color);
+    }
+    function onUp(e) {
+        delete activePointers[e.pointerId];
+    }
+
+    root.addEventListener('pointerdown', onDown);
+    root.addEventListener('pointermove', onMove);
+    root.addEventListener('pointerup', onUp);
+    root.addEventListener('pointercancel', onUp);
+    root.addEventListener('pointerleave', onUp);
+})();
+</script>
+""",
+        height=1,
+    )
