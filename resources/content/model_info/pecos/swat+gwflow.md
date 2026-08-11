@@ -71,10 +71,7 @@ This is important for the TxPWC project because treated produced water assessmen
 - Land application and irrigation scenarios  
 - Salinity and constituent response under different management conditions
 
-<!-- Placeholder: solute transport schematic -->
-![Solute transport schematic](images/solute_transport_placeholder.png)
-
-*Figure 4. Placeholder for a conceptual diagram of coupled hydrologic and solute transport processes.*
+🚧 **In development** — a conceptual diagram of coupled hydrologic and solute-transport processes is planned for this section.
 
 ## Parameterization and Calibration Uncertainty
 
