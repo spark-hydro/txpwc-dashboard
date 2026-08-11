@@ -5,7 +5,7 @@ The study area is the **Pecos River Basin**, which was selected to evaluate the 
 
 The current Pecos River model domain includes:
 
-- **Watershed area:** approximately 161,070 km²  
+- **Watershed area:** approximately 121,404 km²  
 - **Subbasins:** 460  
 - **HRUs:** 2,874  
 - **Land use classes:** 13  
