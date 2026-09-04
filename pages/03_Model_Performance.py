@@ -3,11 +3,20 @@ from components.cards import render_metric_cards
 from components.sidebar import render_sidebar
 from core.metrics.performance import compute_basic_summary
 from core.plotting.duration_curves import plot_fdc
-from core.plotting.groundwater import plot_groundwater_scatter
+from core.plotting.groundwater import plot_groundwater_scatter, plot_well_timeseries
 from core.plotting.hydrographs import plot_streamflow_hydrograph
 from core.plotting.maps import plot_station_map
 from core.services.performance_service import load_performance_bundle
-from core.plotting.maps import plot_station_map, plot_subbasins_map, add_station_geojson_points
+from core.plotting.maps import (
+    plot_station_map,
+    plot_subbasins_map,
+    add_station_geojson_points,
+    plot_wells_map,
+    plot_reservoirs_map,
+)
+from core.plotting.reservoirs import plot_reservoir_timeseries
+from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
+from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from streamlit_plotly_events import plotly_events
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
@@ -92,8 +101,8 @@ if bundle.subbasins_geojson is not None:
                 st.success(f"Selected subbasin from map: {subbasin_id}")
 
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["Streamflow", "Groundwater", "Sediment Yield", "Salinity"]
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity"]
 )
 
 with tab1:
@@ -220,6 +229,108 @@ with tab2:
 
 
 with tab3:
+    st.subheader("Real groundwater monitoring wells")
+    st.caption(
+        "60 real USGS NWIS / TWDB observation wells over the Pecos gwflow grid — "
+        "independent of the small demo dataset used elsewhere on this page. "
+        "Pick a well from the list below the map."
+    )
+
+    if context.basin_id == "Pecos":
+        wells_meta = read_wells_meta(bundle.basin_dir)
+        wells_ts = read_wells_timeseries(bundle.basin_dir)
+
+        if wells_meta.empty:
+            st.info("No well catalog found for this basin.")
+        else:
+            st.plotly_chart(plot_wells_map(wells_meta), use_container_width=True)
+
+            well_options = wells_meta["id"].tolist()
+            well_labels = dict(zip(wells_meta["id"], wells_meta["label"]))
+            current_well = st.session_state.get("selected_well", well_options[0])
+            if current_well not in well_options:
+                current_well = well_options[0]
+
+            selected_well = st.selectbox(
+                "Well",
+                options=well_options,
+                index=well_options.index(current_well),
+                format_func=lambda wid: well_labels.get(wid, wid),
+            )
+            st.session_state["selected_well"] = selected_well
+
+            well_row = wells_meta[wells_meta["id"] == selected_well].iloc[0]
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Source", well_row["source"])
+            col2.metric("Readings", int(well_row["n_obs"]))
+            col3.metric("Mean head", f"{well_row['mean_head_m']:.1f} m" if pd.notna(well_row["mean_head_m"]) else "NA")
+            col4.metric("Well depth", f"{well_row['well_depth_ft']:.0f} ft" if pd.notna(well_row.get("well_depth_ft")) else "NA")
+
+            well_series = wells_ts[wells_ts["well_id"] == selected_well]
+            if well_series.empty:
+                st.info("No time series available for this well.")
+            else:
+                st.plotly_chart(
+                    plot_well_timeseries(well_series, well_labels.get(selected_well, selected_well)),
+                    use_container_width=True,
+                )
+                st.caption(
+                    "Source: USGS NWIS / TWDB Groundwater Database, extracted from the "
+                    "Reservoir Release Lab's own calibration well catalog."
+                )
+    else:
+        st.info("Real well data is only available for the Pecos basin right now.")
+
+
+with tab4:
+    st.subheader("Real reservoir release &amp; storage (2000–2020)")
+    st.caption(
+        "The Pecos's 5 major dams — Santa Rosa, Sumner, Brantley, Avalon, Red Bluff — "
+        "real monthly release and storage, blended GDROM + USGS gage records. "
+        "See the [Reservoir Release Lab](/Scenarios) to explore release policy interactively."
+    )
+
+    if context.basin_id == "Pecos":
+        res_meta = read_reservoirs_meta(bundle.basin_dir)
+        res_ts = read_reservoirs_monthly(bundle.basin_dir)
+
+        if res_meta.empty:
+            st.info("No reservoir catalog found for this basin.")
+        else:
+            st.plotly_chart(plot_reservoirs_map(res_meta), use_container_width=True)
+
+            dam_options = res_meta["dam_key"].tolist()
+            dam_labels = dict(zip(res_meta["dam_key"], res_meta["name"]))
+            current_dam = st.session_state.get("selected_dam", dam_options[0])
+            if current_dam not in dam_options:
+                current_dam = dam_options[0]
+
+            selected_dam = st.selectbox(
+                "Dam",
+                options=dam_options,
+                index=dam_options.index(current_dam),
+                format_func=lambda k: dam_labels.get(k, k),
+            )
+            st.session_state["selected_dam"] = selected_dam
+
+            dam_series = res_ts[res_ts["dam_key"] == selected_dam]
+            if dam_series.empty:
+                st.info("No time series available for this dam.")
+            else:
+                st.plotly_chart(
+                    plot_reservoir_timeseries(dam_series, dam_labels.get(selected_dam, selected_dam)),
+                    use_container_width=True,
+                )
+                st.caption(
+                    "Source: Pecos_USA SWAT+gwflow reservoir model, blended GDROM "
+                    "(NM Interstate Stream Commission) + USGS gage records, "
+                    "2000–2020 monthly."
+                )
+    else:
+        st.info("Real reservoir data is only available for the Pecos basin right now.")
+
+
+with tab5:
     st.subheader("Subbasin-scale simulated sediment")
 
     selected_subbasin = st.session_state.get("selected_subbasin")
@@ -331,8 +442,20 @@ with tab3:
             else:
                 st.info("Metrics not available (no observed sediment data).")
 
-with tab4:
-    st.info("Salinity analysis will be added here.")
+with tab6:
+    st.subheader("Salinity")
+    st.markdown(
+        "🚧 **Planned** — no observed salinity time series exists for this basin yet. "
+        "The Pecos's natural salinity sources (e.g. the Malaga Bend brine springs) are "
+        "documented locations, not a measured concentration record — see "
+        "[Hydrology](/Hydrology) for that context.\n\n"
+        "This tab will populate once the salinity-transport module is added to "
+        "SWAT+gwflow and calibrated (see the [Hydrology](/Hydrology) roadmap), at which "
+        "point it will follow the same observed-vs-simulated pattern as Streamflow "
+        "and Groundwater above. In the meantime, the "
+        "[Salinity Lab](/Water_Quality) lets you explore conceptual salinity transport "
+        "with real report-anchored values."
+    )
 
 
 
