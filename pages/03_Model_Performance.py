@@ -17,6 +17,10 @@ from core.plotting.maps import (
 from core.plotting.reservoirs import plot_reservoir_timeseries
 from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
 from core.io.wells_reader import read_wells_meta, read_wells_timeseries
+from core.io.salinity_reader import read_salinity_sites
+from core.io.climate_reader import read_et_basin_monthly
+from core.plotting.salinity import plot_salinity_sites_map, plot_tds_distribution
+from core.plotting.climate import plot_et_water_balance
 from streamlit_plotly_events import plotly_events
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
@@ -101,8 +105,8 @@ if bundle.subbasins_geojson is not None:
                 st.success(f"Selected subbasin from map: {subbasin_id}")
 
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity"]
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity", "Climate (ET)"]
 )
 
 with tab1:
@@ -443,19 +447,90 @@ with tab5:
                 st.info("Metrics not available (no observed sediment data).")
 
 with tab6:
-    st.subheader("Salinity")
-    st.markdown(
-        "🚧 **Planned** — no observed salinity time series exists for this basin yet. "
-        "The Pecos's natural salinity sources (e.g. the Malaga Bend brine springs) are "
-        "documented locations, not a measured concentration record — see "
-        "[Hydrology](/Hydrology) for that context.\n\n"
-        "This tab will populate once the salinity-transport module is added to "
-        "SWAT+gwflow and calibrated (see the [Hydrology](/Hydrology) roadmap), at which "
-        "point it will follow the same observed-vs-simulated pattern as Streamflow "
-        "and Groundwater above. In the meantime, the "
-        "[Salinity Lab](/Water_Quality) lets you explore conceptual salinity transport "
-        "with real report-anchored values."
+    st.subheader("Real salinity / TDS observation sites")
+    st.caption(
+        "4,283 real water-quality sampling sites inside the Pecos watershed "
+        "(USGS, NMED, TCEQ), compiled in the Houston et al. (2019) USGS Pecos "
+        "River Basin Salinity Assessment. SWAT+gwflow does not yet include a "
+        "salinity-transport module, so this is an **observed-data inventory**, "
+        "not an observed-vs-simulated comparison — that will follow once the "
+        "module is added and calibrated (see the [Hydrology](/Hydrology) roadmap). "
+        "For a conceptual, interactive treatment of salinity transport in the "
+        "meantime, see the [Salinity Lab](/Water_Quality)."
     )
+
+    if context.basin_id == "Pecos":
+        salinity_sites = read_salinity_sites(bundle.basin_dir)
+
+        if salinity_sites.empty:
+            st.info("No salinity site catalog found for this basin.")
+        else:
+            n_sites = len(salinity_sites)
+            n_tds = int(salinity_sites["tds_mean"].notna().sum())
+            n_iso = int((salinity_sites["n_iso_samples"] > 0).sum())
+            n_saline = int((salinity_sites["tds_mean"] > 6000).sum())
+            median_tds = salinity_sites["tds_mean"].median()
+            max_tds = salinity_sites["tds_mean"].max()
+
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Sampling sites", f"{n_sites:,}")
+            col2.metric("With direct TDS", f"{n_tds:,}")
+            col3.metric("With isotope tracers", f"{n_iso:,}")
+            col4.metric("Sites > 6,000 mg/L", f"{n_saline:,}")
+
+            st.plotly_chart(plot_salinity_sites_map(salinity_sites), use_container_width=True)
+
+            col_a, col_b = st.columns(2)
+            col_a.metric("Median TDS (all sites w/ reading)", f"{median_tds:,.0f} mg/L")
+            col_b.metric("Highest single reading", f"{max_tds:,.0f} mg/L")
+
+            st.plotly_chart(plot_tds_distribution(salinity_sites), use_container_width=True)
+
+            st.caption(
+                "Source: Houston, J.R. et al. (2019), USGS Pecos River Basin Salinity "
+                "Assessment (DOI: 10.5066/F7DB800T). Values are historical grab-sample "
+                "TDS/specific-conductance readings, not a continuous or model-simulated series."
+            )
+    else:
+        st.info("Real salinity site data is only available for the Pecos basin right now.")
+
+
+with tab7:
+    st.subheader("Basin water balance — precipitation &amp; evapotranspiration")
+    st.caption(
+        "Real gridded climate data (TerraClimate, Abatzoglou et al. 2018), averaged "
+        "over ~6,300 grid cells covering the Pecos basin, monthly, 2000–2020. This is "
+        "an independent remote-sensing/reanalysis product — not a SWAT+gwflow model "
+        "output — included here as basin-wide climate context alongside the "
+        "streamflow and groundwater records above."
+    )
+
+    if context.basin_id == "Pecos":
+        et_df = read_et_basin_monthly(bundle.basin_dir)
+
+        if et_df.empty:
+            st.info("No basin climate record found for this basin.")
+        else:
+            mean_ppt = et_df["ppt_mm"].mean() * 12
+            mean_aet = et_df["aet_mm"].mean() * 12
+            pct_closed = mean_aet / mean_ppt * 100 if mean_ppt else 0
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Mean annual precipitation", f"{mean_ppt:,.0f} mm/yr")
+            col2.metric("Mean annual actual ET", f"{mean_aet:,.0f} mm/yr")
+            col3.metric("ET / precipitation", f"{pct_closed:.0f}%")
+
+            st.plotly_chart(plot_et_water_balance(et_df), use_container_width=True)
+
+            st.caption(
+                f"Source: TerraClimate monthly climate data (Abatzoglou et al. 2018), "
+                f"averaged over {6300:,} grid cells. Nearly all incoming precipitation "
+                "leaves the basin as evapotranspiration — a key reason streamflow is so "
+                "limited relative to basin area, and a factor in the Pecos's high "
+                "residual salinity (see [Hydrology](/Hydrology))."
+            )
+    else:
+        st.info("Real basin climate data is only available for the Pecos basin right now.")
 
 
 
