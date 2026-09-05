@@ -47,6 +47,84 @@ else:
     wells_meta = wells_ts = res_meta = res_ts = salinity_sites = pd.DataFrame()
 
 
+def _subbasin_streamflow_df(subbasin_id):
+    """Merged observed+simulated streamflow for one subbasin.
+
+    Shared by the map's click panel and the Streamflow tab, so both show
+    the exact same series built the exact same way.
+    """
+    station_matches = pd.DataFrame()
+    if not bundle.stations.empty:
+        station_matches = bundle.stations[
+            bundle.stations["subbasin"].astype(str) == str(subbasin_id)
+        ].copy()
+    matched_station = station_matches.iloc[0] if not station_matches.empty else None
+
+    sub_df = pd.DataFrame()
+    if not bundle.channel_daily.empty:
+        sub_df = bundle.channel_daily[bundle.channel_daily["gis_id"] == int(subbasin_id)].copy()
+
+    sim_plot_df = pd.DataFrame(columns=["date", "simulated"])
+    if not sub_df.empty:
+        sim_plot_df = sub_df[["date", "flo_out"]].rename(columns={"flo_out": "simulated"})
+
+    obs_plot_df = pd.DataFrame(columns=["date", "observed"])
+    if matched_station is not None:
+        site_no = str(matched_station["site_no"]).strip().split(".")[0].zfill(8)
+        obs_plot_df = read_observed_station_timeseries(
+            basin_dir=bundle.basin_dir,
+            filename=bundle.observed_data_filename,
+            site_no=site_no,
+            variable="flow",
+        )
+
+    if not obs_plot_df.empty:
+        plot_df = obs_plot_df.merge(sim_plot_df, on="date", how="inner")
+    else:
+        plot_df = sim_plot_df.copy()
+
+    if not plot_df.empty:
+        plot_df = plot_df.sort_values("date").reset_index(drop=True)
+
+    return plot_df, station_matches
+
+
+def _subbasin_streamflow_fig(plot_df, subbasin_id, compact=False):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=plot_df["date"], y=plot_df["simulated"], mode="lines", name="Simulated")
+    )
+    if "observed" in plot_df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=plot_df["date"], y=plot_df["observed"],
+                mode="markers", name="Observed",
+                marker=dict(symbol="circle", size=7, color="rgba(0,0,0,0)", line=dict(color="red", width=1.5), opacity=0.5),
+            )
+        )
+    fig.update_layout(
+        title="" if compact else f"Streamflow — Subbasin {subbasin_id}",
+        xaxis_title="" if compact else "Date",
+        yaxis_title="" if compact else "Streamflow Discharge (cm³/s)",
+        height=200 if compact else None,
+        showlegend=not compact,
+        margin=dict(l=10, r=10, t=10 if compact else 40, b=10),
+        hovermode="x unified",
+    )
+    return fig
+
+
+def _compact_fig(fig):
+    """Shrink an existing figure for the map's small click panel."""
+    fig.update_layout(
+        title="",
+        height=200,
+        showlegend=False,
+        margin=dict(l=10, r=10, t=10, b=10),
+    )
+    return fig
+
+
 st.title("Model Performance")
 st.caption("Initial end-to-end vertical slice: context selection → data load → metrics → plots.")
 st.subheader("Watershed Map")
@@ -125,31 +203,106 @@ if bundle.subbasins_geojson is not None:
             props = features[point_index].get("properties", {})
             subbasin_id = props.get("Subbasin")
             st.session_state["selected_subbasin"] = subbasin_id
-            st.success(f"Selected subbasin from map: {subbasin_id}")
+
+            with st.container(border=True):
+                st.markdown(f"**Subbasin {subbasin_id} — simulated streamflow**")
+                sf_plot_df, _ = _subbasin_streamflow_df(subbasin_id)
+                if sf_plot_df.empty:
+                    st.caption("No simulated series available for this subbasin.")
+                else:
+                    st.plotly_chart(
+                        _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=True),
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="map_panel_subbasin_compact",
+                    )
+                    with st.expander("See full-size chart & details"):
+                        st.plotly_chart(
+                            _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=False),
+                            use_container_width=True,
+                            key="map_panel_subbasin_full",
+                        )
+                        st.caption("Also on the Streamflow tab below, with sediment/metrics context.")
 
         elif layer == "wells" and point_index is not None and 0 <= point_index < len(wells_meta):
             well_row = wells_meta.iloc[point_index]
             st.session_state["selected_well"] = well_row["id"]
-            st.success(f"Selected well from map: {well_row['label']} — see the Groundwater tab.")
+
+            with st.container(border=True):
+                st.markdown(f"**{well_row['label']} — water table depth**")
+                well_series = wells_ts[wells_ts["well_id"] == well_row["id"]]
+                if well_series.empty:
+                    st.caption("No time series available for this well.")
+                else:
+                    st.plotly_chart(
+                        _compact_fig(plot_well_timeseries(well_series, well_row["label"])),
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="map_panel_well_compact",
+                    )
+                    with st.expander("See full-size chart & details"):
+                        st.plotly_chart(
+                            plot_well_timeseries(well_series, well_row["label"]),
+                            use_container_width=True,
+                            key="map_panel_well_full",
+                        )
+                        col_w1, col_w2, col_w3 = st.columns(3)
+                        col_w1.metric("Source", well_row["source"])
+                        col_w2.metric("Readings", int(well_row["n_obs"]))
+                        col_w3.metric("Mean head", f"{well_row['mean_head_m']:.1f} m" if pd.notna(well_row["mean_head_m"]) else "NA")
 
         elif layer == "reservoirs" and point_index is not None and 0 <= point_index < len(res_meta):
             dam_row = res_meta.iloc[point_index]
             st.session_state["selected_dam"] = dam_row["dam_key"]
-            st.success(f"Selected dam from map: {dam_row['name']} — see the Reservoirs tab.")
+
+            with st.container(border=True):
+                st.markdown(f"**{dam_row['name']} — release & storage**")
+                dam_series = res_ts[res_ts["dam_key"] == dam_row["dam_key"]]
+                if dam_series.empty:
+                    st.caption("No time series available for this dam.")
+                else:
+                    st.plotly_chart(
+                        _compact_fig(plot_reservoir_timeseries(dam_series, dam_row["name"])),
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                        key="map_panel_dam_compact",
+                    )
+                    with st.expander("See full-size chart & details"):
+                        st.plotly_chart(
+                            plot_reservoir_timeseries(dam_series, dam_row["name"]),
+                            use_container_width=True,
+                            key="map_panel_dam_full",
+                        )
 
         elif layer == "salinity" and point_index is not None and 0 <= point_index < len(salinity_plotted):
             site = salinity_plotted.iloc[point_index]
             with st.container(border=True):
                 st.markdown(f"**{site['desc']}**")
-                col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-                col_s1.metric("Mean TDS", f"{site['tds_mean']:,.0f} mg/L")
-                col_s2.metric("Range", f"{site['tds_min']:,.0f}–{site['tds_max']:,.0f}")
-                col_s3.metric("TDS samples", int(site["n_tds"]))
-                col_s4.metric("Source", site["source"])
                 st.caption(
-                    f"Isotope samples: {int(site['n_iso_samples'])} · "
-                    f"Sampled {site['date_oldest']} to {site['date_newest']}"
+                    "No continuous time series exists per site (grab samples only) -- "
+                    "shown here is where this site's mean TDS falls in the basin-wide distribution."
                 )
+                st.plotly_chart(
+                    plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"], compact=True),
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                    key="map_panel_salinity_compact",
+                )
+                with st.expander("See full-size chart & details"):
+                    st.plotly_chart(
+                        plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"]),
+                        use_container_width=True,
+                        key="map_panel_salinity_full",
+                    )
+                    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+                    col_s1.metric("Mean TDS", f"{site['tds_mean']:,.0f} mg/L")
+                    col_s2.metric("Range", f"{site['tds_min']:,.0f}–{site['tds_max']:,.0f}")
+                    col_s3.metric("TDS samples", int(site["n_tds"]))
+                    col_s4.metric("Source", site["source"])
+                    st.caption(
+                        f"Isotope samples: {int(site['n_iso_samples'])} · "
+                        f"Sampled {site['date_oldest']} to {site['date_newest']}"
+                    )
 
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
@@ -162,11 +315,9 @@ with tab1:
     if selected_subbasin is not None:
         st.caption(f"Active subbasin: {selected_subbasin}")    
 
-    station_matches = pd.DataFrame()
-    if selected_subbasin is not None and not bundle.stations.empty:
-        station_matches = bundle.stations[
-            bundle.stations["subbasin"].astype(str) == str(selected_subbasin)
-        ].copy()
+    plot_df = pd.DataFrame()
+    if selected_subbasin is not None:
+        plot_df, station_matches = _subbasin_streamflow_df(selected_subbasin)
 
         if not station_matches.empty:
             st.write("Matched station(s) for this subbasin:")
@@ -177,88 +328,13 @@ with tab1:
         else:
             st.info("No observation station matched to this subbasin.")
 
-    matched_station = None
-    if not station_matches.empty:
-        matched_station = station_matches.iloc[0]
-
-    # Create the simulated subbasin series first, regardless of whether a station exists.
-    sub_df = pd.DataFrame()
-
-    if selected_subbasin is not None and not bundle.channel_daily.empty:
-        sub_df = bundle.channel_daily[
-            bundle.channel_daily["gis_id"] == int(selected_subbasin)
-        ].copy()
-
-    # Turn that simulated subbasin table into a plotting table for streamflow.
-    sim_plot_df = pd.DataFrame(columns=["date", "simulated"])
-
-    if not sub_df.empty:
-        sim_plot_df = sub_df[["date", "flo_out"]].copy()
-        sim_plot_df = sim_plot_df.rename(columns={"flo_out": "simulated"})
-
-    # Load the observed series only when a matched station exists.
-    obs_plot_df = pd.DataFrame(columns=["date", "observed"])
-
-    if matched_station is not None:
-        site_no = str(matched_station["site_no"]).strip()
-        site_no = site_no.split(".")[0].zfill(8)
-
-        obs_plot_df = read_observed_station_timeseries(
-            basin_dir=bundle.basin_dir,
-            filename=bundle.observed_data_filename,
-            site_no=site_no,
-            variable="flow",
-        )
-
-    # Create one unified plot_df for the Streamflow tab.
-    plot_df = pd.DataFrame()
-    if not obs_plot_df.empty:
-        plot_df = obs_plot_df.merge(sim_plot_df, on="date", how="inner")
-    else:
-        plot_df = sim_plot_df.copy()
-
     if not plot_df.empty:
-        plot_df = plot_df.sort_values("date").reset_index(drop=True)
-
-    # Plot plot_df in one figure, with observed shown only when available.
-    if not plot_df.empty:
-        fig_sub = go.Figure()
-
-        fig_sub.add_trace(
-            go.Scatter(
-                x=plot_df["date"],
-                y=plot_df["simulated"],
-                mode="lines",
-                name="Simulated",
-                # line=dict(width=2),
-            )
+        st.plotly_chart(
+            _subbasin_streamflow_fig(plot_df, selected_subbasin),
+            use_container_width=True,
+            config={"scrollZoom": True},
+            key="tab_streamflow_chart",
         )
-
-        if "observed" in plot_df.columns:
-            fig_sub.add_trace(
-                go.Scatter(
-                    x=plot_df["date"],
-                    y=plot_df["observed"],
-                    mode="markers",
-                    name="Observed",
-                    marker=dict(
-                        symbol="circle",
-                        size=7,
-                        color="rgba(0,0,0,0)",
-                        line=dict(color="red", width=1.5),
-                    opacity=0.5,
-                    ),
-                )
-            )
-
-        fig_sub.update_layout(
-            title=f"Streamflow - Subbasin {selected_subbasin}",
-            xaxis_title="Date",
-            yaxis_title="Streamflow Discharge (cm³/s)",
-            hovermode="x unified"
-        )
-
-        st.plotly_chart(fig_sub, use_container_width=True, config={"scrollZoom": True})
 
     if "observed" in plot_df.columns:
         station_metrics = evaluate_metrics(
@@ -276,7 +352,7 @@ with tab1:
 
 
 with tab2:
-    st.plotly_chart(plot_fdc(bundle.streamflow_joined), use_container_width=True)
+    st.plotly_chart(plot_fdc(bundle.streamflow_joined), use_container_width=True, key="tab_fdc_chart")
 
 
 with tab3:
@@ -320,6 +396,7 @@ with tab3:
                 st.plotly_chart(
                     plot_well_timeseries(well_series, well_labels.get(selected_well, selected_well)),
                     use_container_width=True,
+                    key="tab_well_chart",
                 )
                 st.caption(
                     "Source: USGS NWIS / TWDB Groundwater Database, extracted from the "
@@ -364,6 +441,7 @@ with tab4:
                 st.plotly_chart(
                     plot_reservoir_timeseries(dam_series, dam_labels.get(selected_dam, selected_dam)),
                     use_container_width=True,
+                    key="tab_reservoir_chart",
                 )
                 st.caption(
                     "Source: Pecos_USA SWAT+gwflow reservoir model, blended GDROM "
@@ -473,6 +551,7 @@ with tab5:
                 fig,
                 use_container_width=True,
                 config={"scrollZoom": True},
+                key="tab_sediment_chart",
             )
 
             if "observed" in plot_df.columns:
@@ -521,7 +600,7 @@ with tab6:
             col_a.metric("Median TDS (all sites w/ reading)", f"{median_tds:,.0f} mg/L")
             col_b.metric("Highest single reading", f"{max_tds:,.0f} mg/L")
 
-            st.plotly_chart(plot_tds_distribution(salinity_sites), use_container_width=True)
+            st.plotly_chart(plot_tds_distribution(salinity_sites), use_container_width=True, key="tab_salinity_hist")
 
             st.caption(
                 "Source: Houston, J.R. et al. (2019), USGS Pecos River Basin Salinity "
@@ -557,7 +636,7 @@ with tab7:
             col2.metric("Mean annual actual ET", f"{mean_aet:,.0f} mm/yr")
             col3.metric("ET / precipitation", f"{pct_closed:.0f}%")
 
-            st.plotly_chart(plot_et_water_balance(et_df), use_container_width=True)
+            st.plotly_chart(plot_et_water_balance(et_df), use_container_width=True, key="tab_et_chart")
 
             st.caption(
                 f"Source: TerraClimate monthly climate data (Abatzoglou et al. 2018), "
