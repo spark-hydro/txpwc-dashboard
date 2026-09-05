@@ -95,7 +95,7 @@ if bundle.subbasins_geojson is not None:
                  "name in the map legend to hide/show that layer instantly.",
         )
 
-    fig, layer_order = plot_watershed_overview(
+    fig, layer_order, salinity_plotted = plot_watershed_overview(
         bundle.subbasins_geojson,
         color_field=selected_var,
         stations_geojson=bundle.stations_geojson if "Stations" in show_layers else None,
@@ -136,6 +136,20 @@ if bundle.subbasins_geojson is not None:
             dam_row = res_meta.iloc[point_index]
             st.session_state["selected_dam"] = dam_row["dam_key"]
             st.success(f"Selected dam from map: {dam_row['name']} — see the Reservoirs tab.")
+
+        elif layer == "salinity" and point_index is not None and 0 <= point_index < len(salinity_plotted):
+            site = salinity_plotted.iloc[point_index]
+            with st.container(border=True):
+                st.markdown(f"**{site['desc']}**")
+                col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+                col_s1.metric("Mean TDS", f"{site['tds_mean']:,.0f} mg/L")
+                col_s2.metric("Range", f"{site['tds_min']:,.0f}–{site['tds_max']:,.0f}")
+                col_s3.metric("TDS samples", int(site["n_tds"]))
+                col_s4.metric("Source", site["source"])
+                st.caption(
+                    f"Isotope samples: {int(site['n_iso_samples'])} · "
+                    f"Sampled {site['date_oldest']} to {site['date_newest']}"
+                )
 
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(

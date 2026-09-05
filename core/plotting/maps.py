@@ -160,6 +160,24 @@ def plot_station_map(stations_df: pd.DataFrame):
     return fig
 
 
+def _salinity_hover_text(row) -> str:
+    """Multi-line hover popup for one real salinity/TDS sampling site."""
+    lines = [f"<b>{row['desc']}</b>", f"Source: {row['source']}"]
+
+    lines.append(
+        f"TDS: {row['tds_mean']:,.0f} mg/L mean "
+        f"({row['tds_min']:,.0f}–{row['tds_max']:,.0f} range, {int(row['n_tds'])} samples)"
+    )
+    if pd.notna(row.get("n_cond")) and row["n_cond"] > 0:
+        lines.append(f"Specific conductance samples: {int(row['n_cond'])}")
+    if pd.notna(row.get("n_iso_samples")) and row["n_iso_samples"] > 0:
+        lines.append(f"Isotope tracer samples: {int(row['n_iso_samples'])}")
+    if pd.notna(row.get("date_oldest")) and pd.notna(row.get("date_newest")):
+        lines.append(f"Sampled: {row['date_oldest']} – {row['date_newest']}")
+
+    return "<br>".join(lines)
+
+
 def plot_watershed_overview(
     subbasins_geojson: dict,
     color_field: str | None = None,
@@ -167,14 +185,18 @@ def plot_watershed_overview(
     wells_meta: pd.DataFrame | None = None,
     reservoirs_meta: pd.DataFrame | None = None,
     salinity_sites: pd.DataFrame | None = None,
-) -> tuple[go.Figure, list[str]]:
+) -> tuple[go.Figure, list[str], pd.DataFrame]:
     """One shared watershed map with optional, toggleable real-data overlays.
 
     Each optional dataset becomes its own named Scattermapbox trace with its
     own legend entry -- once shown, click the legend to hide/show a layer
-    without a rerun. Returns (fig, layer_order), where layer_order[i] names
-    the layer for curve_number i, so click events can be routed back to the
-    right dataset (subbasin vs. well vs. dam) by the caller.
+    without a rerun. Returns (fig, layer_order, salinity_plotted), where
+    layer_order[i] names the layer for curve_number i (so click events can
+    be routed back to the right dataset -- subbasin vs. well vs. dam -- by
+    the caller), and salinity_plotted is the exact (filtered, reindexed)
+    salinity dataframe backing the "salinity" trace, since it drops
+    no-TDS rows and callers need matching positions to read a clicked
+    point's full record.
     """
     fig = plot_subbasins_map(subbasins_geojson, color_field=color_field)
     layer_order = ["subbasins"]
@@ -214,9 +236,11 @@ def plot_watershed_overview(
         )
         layer_order.append("reservoirs")
 
+    salinity_plotted = pd.DataFrame()
     if salinity_sites is not None and not salinity_sites.empty:
-        with_tds = salinity_sites[salinity_sites["tds_mean"].notna()]
+        with_tds = salinity_sites[salinity_sites["tds_mean"].notna()].reset_index(drop=True)
         if not with_tds.empty:
+            salinity_plotted = with_tds
             log_tds = np.log10(with_tds["tds_mean"].clip(lower=1))
             fig.add_trace(
                 go.Scattermapbox(
@@ -224,7 +248,7 @@ def plot_watershed_overview(
                     lon=with_tds["lon"],
                     mode="markers",
                     marker=dict(
-                        size=5,
+                        size=7,
                         color=log_tds,
                         colorscale="YlOrRd",
                         cmin=1, cmax=5.3,
@@ -236,10 +260,7 @@ def plot_watershed_overview(
                             ticktext=["10", "100", "1,000", "10,000", "100,000"],
                         ),
                     ),
-                    text=[
-                        f"{d}<br>Mean TDS: {t:,.0f} mg/L"
-                        for d, t in zip(with_tds["desc"], with_tds["tds_mean"])
-                    ],
+                    text=[_salinity_hover_text(row) for _, row in with_tds.iterrows()],
                     hovertemplate="%{text}<extra></extra>",
                     name="Salinity sites",
                 )
@@ -250,7 +271,7 @@ def plot_watershed_overview(
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
-    return fig, layer_order
+    return fig, layer_order, salinity_plotted
 
 
 def add_station_geojson_points(fig, stations_geojson: dict):
