@@ -11,17 +11,15 @@ from core.plotting.maps import (
     plot_station_map,
     plot_subbasins_map,
     add_station_geojson_points,
-    plot_wells_map,
-    plot_reservoirs_map,
+    plot_watershed_overview,
 )
 from core.plotting.reservoirs import plot_reservoir_timeseries
 from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
 from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from core.io.salinity_reader import read_salinity_sites
 from core.io.climate_reader import read_et_basin_monthly
-from core.plotting.salinity import plot_salinity_sites_map, plot_tds_distribution
+from core.plotting.salinity import plot_tds_distribution
 from core.plotting.climate import plot_et_water_balance
-from streamlit_plotly_events import plotly_events
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
 from core.io.txpwc_reader import read_observed_station_timeseries
@@ -38,6 +36,15 @@ def get_base64_image(image_path):
 
 context = render_sidebar()
 bundle = load_performance_bundle(context)
+
+if context.basin_id == "Pecos":
+    wells_meta = read_wells_meta(bundle.basin_dir)
+    wells_ts = read_wells_timeseries(bundle.basin_dir)
+    res_meta = read_reservoirs_meta(bundle.basin_dir)
+    res_ts = read_reservoirs_monthly(bundle.basin_dir)
+    salinity_sites = read_salinity_sites(bundle.basin_dir)
+else:
+    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = pd.DataFrame()
 
 
 st.title("Model Performance")
@@ -58,51 +65,77 @@ if bundle.subbasins_geojson is not None:
         numeric_candidates[0] if numeric_candidates else None
     )
 
-    selected_var = None
-    if numeric_candidates:
-        selected_var = st.selectbox(
-            "Color subbasins by",
-            options=numeric_candidates,
-            index=numeric_candidates.index(default_var) if default_var in numeric_candidates else 0,
-            key="shared_map_color_var",
+    col_var, col_layers = st.columns([1, 2])
+    with col_var:
+        selected_var = None
+        if numeric_candidates:
+            selected_var = st.selectbox(
+                "Color subbasins by",
+                options=numeric_candidates,
+                index=numeric_candidates.index(default_var) if default_var in numeric_candidates else 0,
+                key="shared_map_color_var",
+            )
+
+    layer_options = []
+    if bundle.stations is not None and not bundle.stations.empty:
+        layer_options.append("Stations")
+    if not wells_meta.empty:
+        layer_options.append("Groundwater wells")
+    if not res_meta.empty:
+        layer_options.append("Reservoirs")
+    if not salinity_sites.empty:
+        layer_options.append("Salinity sites")
+
+    with col_layers:
+        show_layers = st.multiselect(
+            "Show on map",
+            options=layer_options,
+            default=["Stations"] if "Stations" in layer_options else [],
+            help="Pick which real datasets to overlay. Once shown, click a "
+                 "name in the map legend to hide/show that layer instantly.",
         )
 
-    fig = plot_subbasins_map(bundle.subbasins_geojson, color_field=selected_var)
-
-    if bundle.stations is not None and not bundle.stations.empty:
-        fig = add_station_geojson_points(fig, bundle.stations_geojson)
-
-
-    selected_points = plotly_events(
-        fig,
-        click_event=True,
-        hover_event=False,
-        select_event=False,
-        override_height=600,
-        override_width="100%",
+    fig, layer_order = plot_watershed_overview(
+        bundle.subbasins_geojson,
+        color_field=selected_var,
+        stations_geojson=bundle.stations_geojson if "Stations" in show_layers else None,
+        wells_meta=wells_meta if "Groundwater wells" in show_layers else None,
+        reservoirs_meta=res_meta if "Reservoirs" in show_layers else None,
+        salinity_sites=salinity_sites if "Salinity sites" in show_layers else None,
     )
 
-    # st.plotly_chart(
-    #     fig,
-    #     use_container_width=True,
-    #     config={"scrollZoom": True},
-    # )
-    # selected_points = []
+    map_event = st.plotly_chart(
+        fig,
+        use_container_width=True,
+        on_select="rerun",
+        selection_mode="points",
+        config={"scrollZoom": True},
+        key="watershed_map",
+    )
 
+    clicked_points = map_event.selection["points"] if map_event and map_event.selection else []
 
-    if selected_points:
-        clicked = selected_points[0]
+    if clicked_points:
+        clicked = clicked_points[0]
+        curve_number = clicked.get("curve_number")
+        point_index = clicked.get("point_index")
+        layer = layer_order[curve_number] if curve_number is not None and curve_number < len(layer_order) else None
 
-        if clicked.get("curveNumber") == 0 and bundle.subbasins_geojson is not None:
-            features = bundle.subbasins_geojson.get("features", [])
-            point_index = clicked.get("pointIndex")
+        if layer == "subbasins" and point_index is not None and 0 <= point_index < len(features):
+            props = features[point_index].get("properties", {})
+            subbasin_id = props.get("Subbasin")
+            st.session_state["selected_subbasin"] = subbasin_id
+            st.success(f"Selected subbasin from map: {subbasin_id}")
 
-            if point_index is not None and 0 <= point_index < len(features):
-                props = features[point_index].get("properties", {})
-                subbasin_id = props.get("Subbasin")
+        elif layer == "wells" and point_index is not None and 0 <= point_index < len(wells_meta):
+            well_row = wells_meta.iloc[point_index]
+            st.session_state["selected_well"] = well_row["id"]
+            st.success(f"Selected well from map: {well_row['label']} — see the Groundwater tab.")
 
-                st.session_state["selected_subbasin"] = subbasin_id
-                st.success(f"Selected subbasin from map: {subbasin_id}")
+        elif layer == "reservoirs" and point_index is not None and 0 <= point_index < len(res_meta):
+            dam_row = res_meta.iloc[point_index]
+            st.session_state["selected_dam"] = dam_row["dam_key"]
+            st.success(f"Selected dam from map: {dam_row['name']} — see the Reservoirs tab.")
 
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
@@ -237,18 +270,14 @@ with tab3:
     st.caption(
         "60 real USGS NWIS / TWDB observation wells over the Pecos gwflow grid — "
         "independent of the small demo dataset used elsewhere on this page. "
-        "Pick a well from the list below the map."
+        "Turn on **Groundwater wells** in the Watershed Map above and click one, "
+        "or just pick one from the list below."
     )
 
     if context.basin_id == "Pecos":
-        wells_meta = read_wells_meta(bundle.basin_dir)
-        wells_ts = read_wells_timeseries(bundle.basin_dir)
-
         if wells_meta.empty:
             st.info("No well catalog found for this basin.")
         else:
-            st.plotly_chart(plot_wells_map(wells_meta), use_container_width=True)
-
             well_options = wells_meta["id"].tolist()
             well_labels = dict(zip(wells_meta["id"], wells_meta["label"]))
             current_well = st.session_state.get("selected_well", well_options[0])
@@ -291,18 +320,15 @@ with tab4:
     st.caption(
         "The Pecos's 5 major dams — Santa Rosa, Sumner, Brantley, Avalon, Red Bluff — "
         "real monthly release and storage, blended GDROM + USGS gage records. "
+        "Turn on **Reservoirs** in the Watershed Map above and click one, or just "
+        "pick one from the list below. "
         "See the [Reservoir Release Lab](/Scenarios) to explore release policy interactively."
     )
 
     if context.basin_id == "Pecos":
-        res_meta = read_reservoirs_meta(bundle.basin_dir)
-        res_ts = read_reservoirs_monthly(bundle.basin_dir)
-
         if res_meta.empty:
             st.info("No reservoir catalog found for this basin.")
         else:
-            st.plotly_chart(plot_reservoirs_map(res_meta), use_container_width=True)
-
             dam_options = res_meta["dam_key"].tolist()
             dam_labels = dict(zip(res_meta["dam_key"], res_meta["name"]))
             current_dam = st.session_state.get("selected_dam", dam_options[0])
@@ -456,12 +482,11 @@ with tab6:
         "not an observed-vs-simulated comparison — that will follow once the "
         "module is added and calibrated (see the [Hydrology](/Hydrology) roadmap). "
         "For a conceptual, interactive treatment of salinity transport in the "
-        "meantime, see the [Salinity Lab](/Water_Quality)."
+        "meantime, see the [Salinity Lab](/Water_Quality). Turn on **Salinity "
+        "sites** in the Watershed Map above to see them plotted."
     )
 
     if context.basin_id == "Pecos":
-        salinity_sites = read_salinity_sites(bundle.basin_dir)
-
         if salinity_sites.empty:
             st.info("No salinity site catalog found for this basin.")
         else:
@@ -477,8 +502,6 @@ with tab6:
             col2.metric("With direct TDS", f"{n_tds:,}")
             col3.metric("With isotope tracers", f"{n_iso:,}")
             col4.metric("Sites > 6,000 mg/L", f"{n_saline:,}")
-
-            st.plotly_chart(plot_salinity_sites_map(salinity_sites), use_container_width=True)
 
             col_a, col_b = st.columns(2)
             col_a.metric("Median TDS (all sites w/ reading)", f"{median_tds:,.0f} mg/L")

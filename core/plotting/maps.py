@@ -130,6 +130,7 @@ def plot_subbasins_map(subbasins_geojson: dict, color_field: str | None = None):
         mapbox_style="open-street-map",
         mapbox_center=center,
         mapbox_zoom=zoom,
+        dragmode="pan",
         margin=dict(l=10, r=10, t=10, b=10),
         height=600,
     )
@@ -159,67 +160,97 @@ def plot_station_map(stations_df: pd.DataFrame):
     return fig
 
 
-def plot_wells_map(wells_meta: pd.DataFrame) -> go.Figure:
-    """60 real groundwater monitoring wells, sized by observation count."""
-    fig = go.Figure()
+def plot_watershed_overview(
+    subbasins_geojson: dict,
+    color_field: str | None = None,
+    stations_geojson: dict | None = None,
+    wells_meta: pd.DataFrame | None = None,
+    reservoirs_meta: pd.DataFrame | None = None,
+    salinity_sites: pd.DataFrame | None = None,
+) -> tuple[go.Figure, list[str]]:
+    """One shared watershed map with optional, toggleable real-data overlays.
 
-    if wells_meta.empty:
-        fig.update_layout(mapbox_style="open-street-map", height=420)
-        return fig
+    Each optional dataset becomes its own named Scattermapbox trace with its
+    own legend entry -- once shown, click the legend to hide/show a layer
+    without a rerun. Returns (fig, layer_order), where layer_order[i] names
+    the layer for curve_number i, so click events can be routed back to the
+    right dataset (subbasin vs. well vs. dam) by the caller.
+    """
+    fig = plot_subbasins_map(subbasins_geojson, color_field=color_field)
+    layer_order = ["subbasins"]
 
-    sizes = 6 + np.minimum(4, np.log2(1 + wells_meta["n_obs"].fillna(0)))
+    if stations_geojson is not None:
+        fig = add_station_geojson_points(fig, stations_geojson)
+        layer_order.append("stations")
 
-    fig.add_trace(
-        go.Scattermapbox(
-            lat=wells_meta["lat"],
-            lon=wells_meta["lon"],
-            mode="markers",
-            marker=dict(size=sizes, color="#22d3ee"),
-            text=wells_meta["label"],
-            customdata=wells_meta["id"],
-            hovertemplate="%{text}<br>%{customdata} — click to plot<extra></extra>",
+    if wells_meta is not None and not wells_meta.empty:
+        sizes = 6 + np.minimum(4, np.log2(1 + wells_meta["n_obs"].fillna(0)))
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=wells_meta["lat"],
+                lon=wells_meta["lon"],
+                mode="markers",
+                marker=dict(size=sizes, color="#7c3aed"),
+                text=wells_meta["label"],
+                hovertemplate="%{text}<extra></extra>",
+                name="Groundwater wells",
+            )
         )
-    )
-    fig.update_layout(
-        mapbox_style="open-street-map",
-        mapbox_center={"lat": wells_meta["lat"].mean(), "lon": wells_meta["lon"].mean()},
-        mapbox_zoom=6,
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=420,
-    )
-    return fig
+        layer_order.append("wells")
 
-
-def plot_reservoirs_map(reservoirs_meta: pd.DataFrame) -> go.Figure:
-    """The 5 real Pecos dams, NM (blue) to TX (orange)."""
-    fig = go.Figure()
-
-    if reservoirs_meta.empty:
-        fig.update_layout(mapbox_style="open-street-map", height=360)
-        return fig
-
-    colors = reservoirs_meta["state"].map({"NM": "#4cc9f0", "TX": "#f4a261"}).fillna("#4cc9f0")
-
-    fig.add_trace(
-        go.Scattermapbox(
-            lat=reservoirs_meta["lat"],
-            lon=reservoirs_meta["lon"],
-            mode="markers+text",
-            marker=dict(size=16, color=colors),
-            text=reservoirs_meta["name"],
-            textposition="top center",
-            customdata=reservoirs_meta["dam_key"],
-            hovertemplate="%{text}<extra></extra>",
+    if reservoirs_meta is not None and not reservoirs_meta.empty:
+        colors = reservoirs_meta["state"].map({"NM": "#4cc9f0", "TX": "#f4a261"}).fillna("#4cc9f0")
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=reservoirs_meta["lat"],
+                lon=reservoirs_meta["lon"],
+                mode="markers+text",
+                marker=dict(size=16, color=colors),
+                text=reservoirs_meta["name"],
+                textposition="top center",
+                hovertemplate="%{text}<extra></extra>",
+                name="Reservoirs",
+            )
         )
-    )
+        layer_order.append("reservoirs")
+
+    if salinity_sites is not None and not salinity_sites.empty:
+        with_tds = salinity_sites[salinity_sites["tds_mean"].notna()]
+        if not with_tds.empty:
+            log_tds = np.log10(with_tds["tds_mean"].clip(lower=1))
+            fig.add_trace(
+                go.Scattermapbox(
+                    lat=with_tds["lat"],
+                    lon=with_tds["lon"],
+                    mode="markers",
+                    marker=dict(
+                        size=5,
+                        color=log_tds,
+                        colorscale="YlOrRd",
+                        cmin=1, cmax=5.3,
+                        showscale=True,
+                        colorbar=dict(
+                            title="TDS (mg/L)",
+                            x=1.15,
+                            tickvals=[1, 2, 3, 4, 5],
+                            ticktext=["10", "100", "1,000", "10,000", "100,000"],
+                        ),
+                    ),
+                    text=[
+                        f"{d}<br>Mean TDS: {t:,.0f} mg/L"
+                        for d, t in zip(with_tds["desc"], with_tds["tds_mean"])
+                    ],
+                    hovertemplate="%{text}<extra></extra>",
+                    name="Salinity sites",
+                )
+            )
+            layer_order.append("salinity")
+
     fig.update_layout(
-        mapbox_style="open-street-map",
-        mapbox_center={"lat": reservoirs_meta["lat"].mean(), "lon": reservoirs_meta["lon"].mean()},
-        mapbox_zoom=5.5,
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=360,
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
-    return fig
+    return fig, layer_order
 
 
 def add_station_geojson_points(fig, stations_geojson: dict):
