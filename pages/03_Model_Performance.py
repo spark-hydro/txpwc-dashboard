@@ -17,9 +17,9 @@ from core.plotting.reservoirs import plot_reservoir_timeseries
 from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
 from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from core.io.salinity_reader import read_salinity_sites
-from core.io.climate_reader import read_et_basin_monthly
+from core.io.climate_reader import read_et_basin_monthly, read_et_grid
 from core.plotting.salinity import plot_tds_distribution
-from core.plotting.climate import plot_et_water_balance
+from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
 from core.io.txpwc_reader import read_observed_station_timeseries
@@ -43,8 +43,9 @@ if context.basin_id == "Pecos":
     res_meta = read_reservoirs_meta(bundle.basin_dir)
     res_ts = read_reservoirs_monthly(bundle.basin_dir)
     salinity_sites = read_salinity_sites(bundle.basin_dir)
+    et_grid = read_et_grid(bundle.basin_dir)
 else:
-    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = pd.DataFrame()
+    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
 
 
 def _subbasin_streamflow_df(subbasin_id):
@@ -163,6 +164,8 @@ if bundle.subbasins_geojson is not None:
         layer_options.append("Reservoirs")
     if not salinity_sites.empty:
         layer_options.append("Salinity sites")
+    if not et_grid.empty:
+        layer_options.append("ET grid")
 
     with col_layers:
         show_layers = st.multiselect(
@@ -180,6 +183,7 @@ if bundle.subbasins_geojson is not None:
         wells_meta=wells_meta if "Groundwater wells" in show_layers else None,
         reservoirs_meta=res_meta if "Reservoirs" in show_layers else None,
         salinity_sites=salinity_sites if "Salinity sites" in show_layers else None,
+        et_grid=et_grid if "ET grid" in show_layers else None,
     )
 
     map_event = st.plotly_chart(
@@ -303,6 +307,28 @@ if bundle.subbasins_geojson is not None:
                         f"Isotope samples: {int(site['n_iso_samples'])} · "
                         f"Sampled {site['date_oldest']} to {site['date_newest']}"
                     )
+
+        elif layer == "et_grid" and point_index is not None and 0 <= point_index < len(et_grid):
+            cell = et_grid.iloc[point_index]
+            with st.container(border=True):
+                st.markdown(f"**Grid cell — {cell['lat']:.3f}, {cell['lon']:.3f}**")
+                st.caption(
+                    "Each cell is a 2000–2020 annual normal (TerraClimate), not a time "
+                    "series -- shown here is where this cell falls basin-wide."
+                )
+                st.plotly_chart(
+                    plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"], compact=True),
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                    key="map_panel_et_compact",
+                )
+                with st.expander("See full-size chart & details"):
+                    st.plotly_chart(
+                        plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"]),
+                        use_container_width=True,
+                        key="map_panel_et_full",
+                    )
+                    st.metric("Actual ET at this cell", f"{cell['aet_mm_yr']:,.0f} mm/yr")
 
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
@@ -645,6 +671,15 @@ with tab7:
                 "limited relative to basin area, and a factor in the Pecos's high "
                 "residual salinity (see [Hydrology](/Hydrology))."
             )
+
+        if not et_grid.empty:
+            st.subheader("Spatial pattern")
+            st.caption(
+                "Same TerraClimate data, but per grid cell (2000–2020 annual normal) "
+                "instead of basin-averaged. Turn on **ET grid** in the Watershed Map "
+                "above to see it mapped, and click a cell for its exact value."
+            )
+            st.plotly_chart(plot_et_grid_distribution(et_grid), use_container_width=True, key="tab_et_grid_hist")
     else:
         st.info("Real basin climate data is only available for the Pecos basin right now.")
 

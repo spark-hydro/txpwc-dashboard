@@ -185,6 +185,7 @@ def plot_watershed_overview(
     wells_meta: pd.DataFrame | None = None,
     reservoirs_meta: pd.DataFrame | None = None,
     salinity_sites: pd.DataFrame | None = None,
+    et_grid: pd.DataFrame | None = None,
 ) -> tuple[go.Figure, list[str], pd.DataFrame]:
     """One shared watershed map with optional, toggleable real-data overlays.
 
@@ -266,6 +267,27 @@ def plot_watershed_overview(
                 )
             )
             layer_order.append("salinity")
+
+    if et_grid is not None and not et_grid.empty:
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=et_grid["lat"],
+                lon=et_grid["lon"],
+                mode="markers",
+                marker=dict(
+                    size=6,
+                    color=et_grid["aet_mm_yr"],
+                    colorscale="YlGnBu",
+                    cmin=220, cmax=520,
+                    showscale=True,
+                    colorbar=dict(title="AET (mm/yr)", x=1.30),
+                ),
+                text=[f"Actual ET: {v:,.0f} mm/yr" for v in et_grid["aet_mm_yr"]],
+                hovertemplate="%{text}<extra></extra>",
+                name="ET grid",
+            )
+        )
+        layer_order.append("et_grid")
 
     fig.update_layout(
         showlegend=True,

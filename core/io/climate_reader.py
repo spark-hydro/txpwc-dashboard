@@ -30,3 +30,12 @@ def read_et_basin_monthly(basin_dir: Path) -> pd.DataFrame:
     df = read_csv(path)
     df["date"] = pd.to_datetime(df["month"], format="%Y-%m")
     return df.sort_values("date").reset_index(drop=True)
+
+
+@st.cache_data
+def read_et_grid(basin_dir: Path) -> pd.DataFrame:
+    """6,300 TerraClimate grid cells covering the basin, mean actual ET (mm/yr)."""
+    path = basin_dir / "et_grid.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["lat", "lon", "aet_mm_yr"])
+    return read_csv(path)
