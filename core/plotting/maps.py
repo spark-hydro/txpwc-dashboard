@@ -130,6 +130,7 @@ def plot_subbasins_map(subbasins_geojson: dict, color_field: str | None = None):
         mapbox_style="open-street-map",
         mapbox_center=center,
         mapbox_zoom=zoom,
+        dragmode="pan",
         margin=dict(l=10, r=10, t=10, b=10),
         height=600,
     )
@@ -157,6 +158,142 @@ def plot_station_map(stations_df: pd.DataFrame):
     )
 
     return fig
+
+
+def _salinity_hover_text(row) -> str:
+    """Multi-line hover popup for one real salinity/TDS sampling site."""
+    lines = [f"<b>{row['desc']}</b>", f"Source: {row['source']}"]
+
+    lines.append(
+        f"TDS: {row['tds_mean']:,.0f} mg/L mean "
+        f"({row['tds_min']:,.0f}–{row['tds_max']:,.0f} range, {int(row['n_tds'])} samples)"
+    )
+    if pd.notna(row.get("n_cond")) and row["n_cond"] > 0:
+        lines.append(f"Specific conductance samples: {int(row['n_cond'])}")
+    if pd.notna(row.get("n_iso_samples")) and row["n_iso_samples"] > 0:
+        lines.append(f"Isotope tracer samples: {int(row['n_iso_samples'])}")
+    if pd.notna(row.get("date_oldest")) and pd.notna(row.get("date_newest")):
+        lines.append(f"Sampled: {row['date_oldest']} – {row['date_newest']}")
+
+    return "<br>".join(lines)
+
+
+def plot_watershed_overview(
+    subbasins_geojson: dict,
+    color_field: str | None = None,
+    stations_geojson: dict | None = None,
+    wells_meta: pd.DataFrame | None = None,
+    reservoirs_meta: pd.DataFrame | None = None,
+    salinity_sites: pd.DataFrame | None = None,
+    et_grid: pd.DataFrame | None = None,
+) -> tuple[go.Figure, list[str], pd.DataFrame]:
+    """One shared watershed map with optional, toggleable real-data overlays.
+
+    Each optional dataset becomes its own named Scattermapbox trace with its
+    own legend entry -- once shown, click the legend to hide/show a layer
+    without a rerun. Returns (fig, layer_order, salinity_plotted), where
+    layer_order[i] names the layer for curve_number i (so click events can
+    be routed back to the right dataset -- subbasin vs. well vs. dam -- by
+    the caller), and salinity_plotted is the exact (filtered, reindexed)
+    salinity dataframe backing the "salinity" trace, since it drops
+    no-TDS rows and callers need matching positions to read a clicked
+    point's full record.
+    """
+    fig = plot_subbasins_map(subbasins_geojson, color_field=color_field)
+    layer_order = ["subbasins"]
+
+    if stations_geojson is not None:
+        fig = add_station_geojson_points(fig, stations_geojson)
+        layer_order.append("stations")
+
+    if wells_meta is not None and not wells_meta.empty:
+        sizes = 6 + np.minimum(4, np.log2(1 + wells_meta["n_obs"].fillna(0)))
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=wells_meta["lat"],
+                lon=wells_meta["lon"],
+                mode="markers",
+                marker=dict(size=sizes, color="#7c3aed"),
+                text=wells_meta["label"],
+                hovertemplate="%{text}<extra></extra>",
+                name="Groundwater wells",
+            )
+        )
+        layer_order.append("wells")
+
+    if reservoirs_meta is not None and not reservoirs_meta.empty:
+        colors = reservoirs_meta["state"].map({"NM": "#4cc9f0", "TX": "#f4a261"}).fillna("#4cc9f0")
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=reservoirs_meta["lat"],
+                lon=reservoirs_meta["lon"],
+                mode="markers+text",
+                marker=dict(size=16, color=colors),
+                text=reservoirs_meta["name"],
+                textposition="top center",
+                hovertemplate="%{text}<extra></extra>",
+                name="Reservoirs",
+            )
+        )
+        layer_order.append("reservoirs")
+
+    salinity_plotted = pd.DataFrame()
+    if salinity_sites is not None and not salinity_sites.empty:
+        with_tds = salinity_sites[salinity_sites["tds_mean"].notna()].reset_index(drop=True)
+        if not with_tds.empty:
+            salinity_plotted = with_tds
+            log_tds = np.log10(with_tds["tds_mean"].clip(lower=1))
+            fig.add_trace(
+                go.Scattermapbox(
+                    lat=with_tds["lat"],
+                    lon=with_tds["lon"],
+                    mode="markers",
+                    marker=dict(
+                        size=7,
+                        color=log_tds,
+                        colorscale="YlOrRd",
+                        cmin=1, cmax=5.3,
+                        showscale=True,
+                        colorbar=dict(
+                            title="TDS (mg/L)",
+                            x=1.15,
+                            tickvals=[1, 2, 3, 4, 5],
+                            ticktext=["10", "100", "1,000", "10,000", "100,000"],
+                        ),
+                    ),
+                    text=[_salinity_hover_text(row) for _, row in with_tds.iterrows()],
+                    hovertemplate="%{text}<extra></extra>",
+                    name="Salinity sites",
+                )
+            )
+            layer_order.append("salinity")
+
+    if et_grid is not None and not et_grid.empty:
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=et_grid["lat"],
+                lon=et_grid["lon"],
+                mode="markers",
+                marker=dict(
+                    size=6,
+                    color=et_grid["aet_mm_yr"],
+                    colorscale="YlGnBu",
+                    cmin=220, cmax=520,
+                    showscale=True,
+                    colorbar=dict(title="AET (mm/yr)", x=1.30),
+                ),
+                text=[f"Actual ET: {v:,.0f} mm/yr" for v in et_grid["aet_mm_yr"]],
+                hovertemplate="%{text}<extra></extra>",
+                name="ET grid",
+            )
+        )
+        layer_order.append("et_grid")
+
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    )
+    return fig, layer_order, salinity_plotted
 
 
 def add_station_geojson_points(fig, stations_geojson: dict):

@@ -54,3 +54,4 @@ Thumbs.db
 # ARCHIVES
 # =========================
 *.zip
+.claude/
