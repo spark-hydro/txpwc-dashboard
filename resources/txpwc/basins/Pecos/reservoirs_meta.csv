@@ -1,0 +1,6 @@
+dam_key,name,state,lat,lon,elev_m,flow_gage,storage_gage
+SantaRosa,Santa Rosa Dam,NM,35.02953,-104.68683,1442.0,08382830,08382810
+Sumner,Sumner Dam (Lake Sumner),NM,34.60833,-104.385,1296.05,08384500,08384000
+Brantley,Brantley Dam,NM,32.54667,-104.37861,991.0,08401500,08401450
+Avalon,Avalon Dam,NM,32.49137,-104.25235,961.48,08404000,08403800
+RedBluff,Red Bluff Dam,TX/NM,31.90124,-103.9102,859.01,08407500,TWDB waterdatafortexas.org

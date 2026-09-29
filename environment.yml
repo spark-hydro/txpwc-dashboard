@@ -14,5 +14,4 @@ dependencies:
       - geopandas>=0.14
       - scipy>=1.10
       - pyyaml>=6.0
-      - streamlit-plotly-events>=0.0.6
       - statsmodels>=0.14

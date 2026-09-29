@@ -4,6 +4,31 @@ import plotly.graph_objects as go
 import pandas as pd
 
 
+def plot_well_timeseries(df: pd.DataFrame, well_label: str) -> go.Figure:
+    """Real observed head (m AMSL) at one USGS/TWDB monitoring well."""
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"], y=df["head_m"],
+            mode="lines+markers",
+            name="Observed head",
+            line=dict(color="#22d3ee"),
+            marker=dict(size=4),
+        )
+    )
+
+    fig.update_layout(
+        title=f"{well_label} — Observed Head",
+        xaxis_title="Date",
+        yaxis_title="Head (m AMSL)",
+        template="plotly_white",
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=60, b=20),
+    )
+    return fig
+
+
 def plot_groundwater_scatter(df: pd.DataFrame) -> go.Figure:
     fig = go.Figure()
 
