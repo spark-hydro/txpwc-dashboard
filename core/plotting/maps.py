@@ -108,7 +108,7 @@ def plot_subbasins_map(subbasins_geojson: dict, color_field: str | None = None):
     fig = go.Figure()
 
     fig.add_trace(
-        go.Choroplethmapbox(
+        go.Choroplethmap(
             geojson=subbasins_geojson,
             locations=locations,
             z=z_values,
@@ -127,9 +127,9 @@ def plot_subbasins_map(subbasins_geojson: dict, color_field: str | None = None):
     )
     center, zoom = _get_map_center_and_zoom(subbasins_geojson)
     fig.update_layout(
-        mapbox_style="open-street-map",
-        mapbox_center=center,
-        mapbox_zoom=zoom,
+        map_style="open-street-map",
+        map_center=center,
+        map_zoom=zoom,
         dragmode="pan",
         margin=dict(l=10, r=10, t=10, b=10),
         height=600,
@@ -141,7 +141,7 @@ def plot_station_map(stations_df: pd.DataFrame):
     fig = go.Figure()
 
     fig.add_trace(
-        go.Scattermapbox(
+        go.Scattermap(
             lat=stations_df["lat"],
             lon=stations_df["lon"],
             mode="markers",
@@ -152,7 +152,7 @@ def plot_station_map(stations_df: pd.DataFrame):
     )
 
     fig.update_layout(
-        mapbox_style="open-street-map",
+        map_style="open-street-map",
         margin=dict(l=10, r=10, t=10, b=10),
         height=600,
     )
@@ -189,7 +189,7 @@ def plot_watershed_overview(
 ) -> tuple[go.Figure, list[str], pd.DataFrame]:
     """One shared watershed map with optional, toggleable real-data overlays.
 
-    Each optional dataset becomes its own named Scattermapbox trace with its
+    Each optional dataset becomes its own named Scattermap trace with its
     own legend entry -- once shown, click the legend to hide/show a layer
     without a rerun. Returns (fig, layer_order, salinity_plotted), where
     layer_order[i] names the layer for curve_number i (so click events can
@@ -209,7 +209,7 @@ def plot_watershed_overview(
     if wells_meta is not None and not wells_meta.empty:
         sizes = 6 + np.minimum(4, np.log2(1 + wells_meta["n_obs"].fillna(0)))
         fig.add_trace(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=wells_meta["lat"],
                 lon=wells_meta["lon"],
                 mode="markers",
@@ -224,7 +224,7 @@ def plot_watershed_overview(
     if reservoirs_meta is not None and not reservoirs_meta.empty:
         colors = reservoirs_meta["state"].map({"NM": "#4cc9f0", "TX": "#f4a261"}).fillna("#4cc9f0")
         fig.add_trace(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=reservoirs_meta["lat"],
                 lon=reservoirs_meta["lon"],
                 mode="markers+text",
@@ -244,7 +244,7 @@ def plot_watershed_overview(
             salinity_plotted = with_tds
             log_tds = np.log10(with_tds["tds_mean"].clip(lower=1))
             fig.add_trace(
-                go.Scattermapbox(
+                go.Scattermap(
                     lat=with_tds["lat"],
                     lon=with_tds["lon"],
                     mode="markers",
@@ -270,7 +270,7 @@ def plot_watershed_overview(
 
     if et_grid is not None and not et_grid.empty:
         fig.add_trace(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=et_grid["lat"],
                 lon=et_grid["lon"],
                 mode="markers",
@@ -331,7 +331,7 @@ def add_station_geojson_points(fig, stations_geojson: dict):
         )
 
     fig.add_trace(
-        go.Scattermapbox(
+        go.Scattermap(
             lat=lats,
             lon=lons,
             mode="markers",
