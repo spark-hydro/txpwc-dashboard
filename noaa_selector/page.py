@@ -459,11 +459,11 @@ def run_app():
                                       "mid-high": "#ff7f0e", "high": "#d62728",
                                   },
                                   title=T("Elevation (m)", "Elevación (m)"))
-            st.plotly_chart(fig_e, use_container_width=True)
+            st.plotly_chart(fig_e, width="stretch")
         with col2:
             fig_s = px.histogram(catalog, x="span_years", nbins=40,
                                   title=T("Record length (years)", "Longitud (años)"))
-            st.plotly_chart(fig_s, use_container_width=True)
+            st.plotly_chart(fig_s, width="stretch")
 
         st.subheader(T("📈 Stations active each year", "📈 Estaciones activas por año"))
         st.caption(T(
@@ -479,7 +479,7 @@ def run_app():
         fig_act = px.area(x=years, y=active_counts,
                            labels={"x": T("Year", "Año"),
                                    "y": T("Stations active", "Estaciones activas")})
-        st.plotly_chart(fig_act, use_container_width=True)
+        st.plotly_chart(fig_act, width="stretch")
 
         st.info(T(
             f"➡️ Go to **🎛️ Filters & Selection** to narrow down these {len(catalog)} stations.",
@@ -721,7 +721,7 @@ def run_app():
             showlegend=False,
             margin=dict(l=10, r=50, t=10, b=30),
         )
-        st.plotly_chart(fig_funnel, use_container_width=True)
+        st.plotly_chart(fig_funnel, width="stretch")
 
         # ── Executive summary ──
         st.subheader(T("📋 Executive Summary", "📋 Resumen Ejecutivo"))
@@ -982,7 +982,7 @@ def run_app():
                             "Distribución de puntajes de estaciones"),
                 )
                 fig_score.update_layout(height=300, showlegend=False)
-                st.plotly_chart(fig_score, use_container_width=True)
+                st.plotly_chart(fig_score, width="stretch")
 
             # ── Selection quality breakdown ───────────────────────────────
             st.subheader(T("📊 Selection quality", "📊 Calidad de la selección"))
@@ -1000,17 +1000,17 @@ def run_app():
                                 labels={"x": "", "y": T("Stations","Estaciones")})
                 fig_b.update_layout(showlegend=False, height=300,
                                      title=T("Elevation distribution","Distribución elevación"))
-                st.plotly_chart(fig_b, use_container_width=True)
+                st.plotly_chart(fig_b, width="stretch")
             with col2:
                 fig_sp = px.histogram(filtered, x="span_years", nbins=20,
                                        title=T("Record length (years)","Longitud (años)"))
                 fig_sp.update_layout(height=300, showlegend=False)
-                st.plotly_chart(fig_sp, use_container_width=True)
+                st.plotly_chart(fig_sp, width="stretch")
             with col3:
                 fig_dc = px.histogram(filtered, x="datacoverage", nbins=20,
                                        title=T("NOAA daily coverage","Cobertura diaria NOAA"))
                 fig_dc.update_layout(height=300, showlegend=False)
-                st.plotly_chart(fig_dc, use_container_width=True)
+                st.plotly_chart(fig_dc, width="stretch")
 
         with st.expander(T("📋 Detailed selection table",
                            "📋 Tabla detallada de selección")):
@@ -1026,7 +1026,7 @@ def run_app():
             # Sort by score descending so best stations show first
             if "score" in disp.columns:
                 disp = disp.sort_values("score", ascending=False)
-            st.dataframe(disp, use_container_width=True)
+            st.dataframe(disp, width="stretch")
             st.download_button(
                 T("⬇️ Download selection (CSV)", "⬇️ Descargar selección (CSV)"),
                 data=filtered.to_csv(index=False).encode(),
@@ -1141,7 +1141,7 @@ def run_app():
                             side="right", overlaying="y", color="crimson"),
                 hovermode="x unified",
             )
-            st.plotly_chart(fig_wl, use_container_width=True)
+            st.plotly_chart(fig_wl, width="stretch")
 
             wet_months = (monthly["PRCP"] / 2 > monthly["TMEAN"]).sum()
             arid = wet_months < 3
@@ -1199,7 +1199,7 @@ def run_app():
                         f"PRCP diaria por año — {BASIN_NAME}"),
                 height=600,
             )
-            st.plotly_chart(fig_cal, use_container_width=True)
+            st.plotly_chart(fig_cal, width="stretch")
 
         # ── SPI + SPEI ──
         with tab3:
@@ -1284,7 +1284,7 @@ def run_app():
                               annotation_text=T("Drought", "Sequía"))
             fig_spi.add_hline(y=1, line_dash="dot", line_color="lightblue",
                               annotation_text=T("Wet", "Húmedo"))
-            st.plotly_chart(fig_spi, use_container_width=True)
+            st.plotly_chart(fig_spi, width="stretch")
 
             n_tot       = len(annual_spi)
             n_dr_spi    = int((annual_spi["SPI"] < -1).sum())
@@ -1380,7 +1380,7 @@ def run_app():
                                    annotation_text=T("Drought", "Sequía"))
                 fig_spei.add_hline(y=1, line_dash="dot", line_color="purple",
                                    annotation_text=T("Wet", "Húmedo"))
-                st.plotly_chart(fig_spei, use_container_width=True)
+                st.plotly_chart(fig_spei, width="stretch")
 
                 n_dr_spei  = int((annual_spei["SPEI"] < -1).sum())
                 n_wet_spei = int((annual_spei["SPEI"] >  1).sum())
@@ -1413,7 +1413,7 @@ def run_app():
             with col1:
                 fig_p = px.scatter(annual_p, x="year", y="PRCP", trendline="ols",
                                     title=T("Annual PRCP with trend","PRCP anual con tendencia"))
-                st.plotly_chart(fig_p, use_container_width=True)
+                st.plotly_chart(fig_p, width="stretch")
                 if len(annual_p) > 2:
                     slope, _, r, p, _ = linregress(annual_p["year"], annual_p["PRCP"])
                     sig = T("significant (p<0.05)","significativa (p<0.05)") if p < 0.05 \
@@ -1425,7 +1425,7 @@ def run_app():
             with col2:
                 fig_tf = px.scatter(annual_t, x="year", y="TMEAN", trendline="ols",
                                      title=T("Annual T with trend","T anual con tendencia"))
-                st.plotly_chart(fig_tf, use_container_width=True)
+                st.plotly_chart(fig_tf, width="stretch")
                 if len(annual_t) > 2:
                     slope_t, _, r_t, p_t, _ = linregress(annual_t["year"], annual_t["TMEAN"])
                     sig_t = T("significant (p<0.05)","significativa (p<0.05)") if p_t < 0.05 \
@@ -1472,7 +1472,7 @@ def run_app():
                         title=T(f"Annual PRCP — {meta['name']}",
                                 f"PRCP anual — {meta['name']}"),
                     )
-                    st.plotly_chart(fig_one, use_container_width=True)
+                    st.plotly_chart(fig_one, width="stretch")
 
     # ══════════════════════════════════════════════════════════════════════════
     # CAL VS VAL
@@ -1549,13 +1549,13 @@ def run_app():
                              points="all",
                              color_discrete_map={cal_label:"#2ca02c", val_label:"#d62728"},
                              title=T("Annual precipitation","Precipitación anual"))
-            st.plotly_chart(fig_pb, use_container_width=True)
+            st.plotly_chart(fig_pb, width="stretch")
         with col2:
             fig_tb = px.box(comp_t, x="period", y="TMEAN", color="period",
                              points="all",
                              color_discrete_map={cal_label:"#2ca02c", val_label:"#d62728"},
                              title=T("Annual mean temperature","Temperatura media anual"))
-            st.plotly_chart(fig_tb, use_container_width=True)
+            st.plotly_chart(fig_tb, width="stretch")
 
         st.subheader(T("📈 Timeline view","📈 Vista temporal"))
         mean_p_all = annual_p["PRCP"].mean()
@@ -1571,7 +1571,7 @@ def run_app():
                           fillcolor="green", opacity=0.12, layer="below", line_width=0)
         fig_tl.add_vrect(x0=val_s.year, x1=val_e.year,
                           fillcolor="red", opacity=0.12, layer="below", line_width=0)
-        st.plotly_chart(fig_tl, use_container_width=True)
+        st.plotly_chart(fig_tl, width="stretch")
 
         st.subheader(T("🧠 Statistical interpretation","🧠 Interpretación estadística"))
 

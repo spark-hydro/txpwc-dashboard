@@ -176,7 +176,7 @@ lab_url = INTERACTIVE_LABS.get(context.basin_id)
 if lab_url:
     st.divider()
     st.subheader("Interactive lab — Salinity transport")
-    st.link_button("↗ Open the lab in full screen", lab_url, use_container_width=True)
+    st.link_button("↗ Open the lab in full screen", lab_url, width="stretch")
     components.iframe(lab_url, height=1000, scrolling=True)
     st.caption(
         "Source: Texas Produced Water Consortium, *Produced Water Treatment Pilot "
