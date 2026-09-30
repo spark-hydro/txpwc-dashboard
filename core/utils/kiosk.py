@@ -26,19 +26,39 @@ QR_LAB_SVG_PATH = ASSETS_DIR / "qr_lab.svg"
 QR_RESERVOIRS_SVG_PATH = ASSETS_DIR / "qr_reservoirs.svg"
 QR_PRECAL_SVG_PATH = ASSETS_DIR / "qr_precal.svg"
 
-# Small inline pictograms, one per lab card -- distinct from the institutional
-# logos (txpwc/water_center/ihydro_lab), which represent the consortium as a
-# whole and stay in the header row above.
-LAB_ICON_RESERVOIR = """<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
-  stroke-width="1.7" stroke-linecap="round"><line x1="6" y1="3" x2="6" y2="21"/>
-  <path d="M9 8c2 0 2 2 4 2s2-2 4-2"/><path d="M9 13c2 0 2 2 4 2s2-2 4-2"/>
-  <path d="M9 18c2 0 2 2 4 2s2-2 4-2"/></svg>"""
-LAB_ICON_SALT = """<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
-  stroke-width="1.7" stroke-linejoin="round"><path d="M12 2l7 5v10l-7 5-7-5V7z"/>
-  <path d="M12 2v20M5 7l7 5 7-5M5 17l7-5 7 5"/></svg>"""
-LAB_ICON_PRECAL = """<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
-  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 0 1 16 0"/>
-  <line x1="12" y1="18" x2="16" y2="10.5"/><circle cx="12" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>"""
+# Small pictograms, one per lab card -- distinct from the institutional logos
+# (txpwc/water_center/ihydro_lab), which represent the consortium as a whole
+# and stay in the header row above. Fixed per-lab brand colors (matching the
+# same cards on the 3 GitHub Pages sites): Reservoir blue, Salt red, PreCal
+# teal -- same lab, same color, wherever its card appears.
+#
+# st.html() sanitizes with DOMPurify, which strips inline <svg> markup (the
+# rest of a kiosk-lab-item -- title, subtitle, QR <img> -- survives fine, but
+# a raw <svg> icon renders as an empty box). Embedding each icon as a
+# data-URI <img>, exactly like the QR codes already do, sidesteps that.
+def _svg_to_data_uri(svg: str) -> str:
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+
+
+_ICON_RESERVOIR_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4cc9f0" '
+    'stroke-width="1.7" stroke-linecap="round"><line x1="6" y1="3" x2="6" y2="21"/>'
+    '<path d="M9 8c2 0 2 2 4 2s2-2 4-2"/><path d="M9 13c2 0 2 2 4 2s2-2 4-2"/>'
+    '<path d="M9 18c2 0 2 2 4 2s2-2 4-2"/></svg>'
+)
+_ICON_SALT_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e0524a" '
+    'stroke-width="1.7" stroke-linejoin="round"><path d="M12 2l7 5v10l-7 5-7-5V7z"/>'
+    '<path d="M12 2v20M5 7l7 5 7-5M5 17l7-5 7 5"/></svg>'
+)
+_ICON_PRECAL_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#56b8d6" '
+    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 0 1 16 0"/>'
+    '<line x1="12" y1="18" x2="16" y2="10.5"/><circle cx="12" cy="18" r="1.3" fill="#56b8d6" stroke="none"/></svg>'
+)
+LAB_ICON_RESERVOIR_URI = _svg_to_data_uri(_ICON_RESERVOIR_SVG)
+LAB_ICON_SALT_URI = _svg_to_data_uri(_ICON_SALT_SVG)
+LAB_ICON_PRECAL_URI = _svg_to_data_uri(_ICON_PRECAL_SVG)
 LOGO_PATH = ASSETS_DIR / "logos" / "txpwc.png"
 LOGO_WATER_CENTER_PATH = ASSETS_DIR / "logos" / "water_center.png"
 LOGO_IHYDRO_PATH = ASSETS_DIR / "logos" / "ihydro_lab.png"
@@ -402,7 +422,7 @@ a.kiosk-lab-item:hover {{
     gap: 8px;
     padding: 16px 14px 14px;
     border-radius: 16px;
-    background: rgba(110, 231, 216, 0.08);
+    background: rgba(8, 30, 42, 0.92);
     border: 1px solid rgba(110, 231, 216, 0.35);
     flex: 0 0 148px;
     width: 148px;
@@ -509,19 +529,19 @@ a.kiosk-lab-item:hover {{
 
     <div class="kiosk-lab-row">
       {f'''<a class="kiosk-lab-item" href="{RESERVOIR_LAB_URL}" target="_blank" rel="noopener">
-        <div class="kiosk-lab-icon">{LAB_ICON_RESERVOIR}</div>
+        <div class="kiosk-lab-icon"><img src="{LAB_ICON_RESERVOIR_URI}" width="26" height="26" alt=""></div>
         <div class="kiosk-lab-text"><div class="kiosk-lab-title">Reservoir</div>
           <div class="kiosk-lab-sub">Manage 5 real Pecos dams &amp; site reuse water</div></div>
         <div class="kiosk-lab-qr"><img src="{qr_res_data_uri}" alt="QR code to the Reservoir lab"></div>
       </a>''' if qr_res_data_uri else ''}
       {f'''<a class="kiosk-lab-item" href="{LAB_URL}" target="_blank" rel="noopener">
-        <div class="kiosk-lab-icon">{LAB_ICON_SALT}</div>
+        <div class="kiosk-lab-icon"><img src="{LAB_ICON_SALT_URI}" width="26" height="26" alt=""></div>
         <div class="kiosk-lab-text"><div class="kiosk-lab-title">Salt</div>
           <div class="kiosk-lab-sub">Release water, watch it move through the aquifer</div></div>
         <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the Salt lab"></div>
       </a>''' if qr_lab_data_uri else ''}
       {f'''<a class="kiosk-lab-item" href="{PRECAL_URL}" target="_blank" rel="noopener">
-        <div class="kiosk-lab-icon">{LAB_ICON_PRECAL}</div>
+        <div class="kiosk-lab-icon"><img src="{LAB_ICON_PRECAL_URI}" width="26" height="26" alt=""></div>
         <div class="kiosk-lab-text"><div class="kiosk-lab-title">PreCal</div>
           <div class="kiosk-lab-sub">Real model calibration status &amp; bug tracker</div></div>
         <div class="kiosk-lab-qr"><img src="{qr_precal_data_uri}" alt="QR code to PreCal"></div>
