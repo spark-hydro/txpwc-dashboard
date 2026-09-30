@@ -139,7 +139,7 @@ reservoir_lab_url = RESERVOIR_LABS.get(context.basin_id)
 if reservoir_lab_url:
     st.divider()
     st.subheader("Interactive lab — Reservoir release & reuse siting")
-    st.link_button("↗ Open the lab in full screen", reservoir_lab_url, use_container_width=True)
+    st.link_button("↗ Open the lab in full screen", reservoir_lab_url, width="stretch")
     components.iframe(reservoir_lab_url, height=1000, scrolling=True)
     st.caption(
         "Source: real 2000–2020 release records for the Pecos's 5 major dams, via the "

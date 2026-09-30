@@ -188,7 +188,7 @@ if bundle.subbasins_geojson is not None:
 
     map_event = st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         on_select="rerun",
         selection_mode="points",
         config={"scrollZoom": True},
@@ -216,14 +216,14 @@ if bundle.subbasins_geojson is not None:
                 else:
                     st.plotly_chart(
                         _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=True),
-                        use_container_width=True,
+                        width="stretch",
                         config={"displayModeBar": False},
                         key="map_panel_subbasin_compact",
                     )
                     with st.expander("See full-size chart & details"):
                         st.plotly_chart(
                             _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=False),
-                            use_container_width=True,
+                            width="stretch",
                             key="map_panel_subbasin_full",
                         )
                         st.caption("Also on the Streamflow tab below, with sediment/metrics context.")
@@ -240,14 +240,14 @@ if bundle.subbasins_geojson is not None:
                 else:
                     st.plotly_chart(
                         _compact_fig(plot_well_timeseries(well_series, well_row["label"])),
-                        use_container_width=True,
+                        width="stretch",
                         config={"displayModeBar": False},
                         key="map_panel_well_compact",
                     )
                     with st.expander("See full-size chart & details"):
                         st.plotly_chart(
                             plot_well_timeseries(well_series, well_row["label"]),
-                            use_container_width=True,
+                            width="stretch",
                             key="map_panel_well_full",
                         )
                         col_w1, col_w2, col_w3 = st.columns(3)
@@ -267,14 +267,14 @@ if bundle.subbasins_geojson is not None:
                 else:
                     st.plotly_chart(
                         _compact_fig(plot_reservoir_timeseries(dam_series, dam_row["name"])),
-                        use_container_width=True,
+                        width="stretch",
                         config={"displayModeBar": False},
                         key="map_panel_dam_compact",
                     )
                     with st.expander("See full-size chart & details"):
                         st.plotly_chart(
                             plot_reservoir_timeseries(dam_series, dam_row["name"]),
-                            use_container_width=True,
+                            width="stretch",
                             key="map_panel_dam_full",
                         )
 
@@ -288,14 +288,14 @@ if bundle.subbasins_geojson is not None:
                 )
                 st.plotly_chart(
                     plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"], compact=True),
-                    use_container_width=True,
+                    width="stretch",
                     config={"displayModeBar": False},
                     key="map_panel_salinity_compact",
                 )
                 with st.expander("See full-size chart & details"):
                     st.plotly_chart(
                         plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"]),
-                        use_container_width=True,
+                        width="stretch",
                         key="map_panel_salinity_full",
                     )
                     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
@@ -318,14 +318,14 @@ if bundle.subbasins_geojson is not None:
                 )
                 st.plotly_chart(
                     plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"], compact=True),
-                    use_container_width=True,
+                    width="stretch",
                     config={"displayModeBar": False},
                     key="map_panel_et_compact",
                 )
                 with st.expander("See full-size chart & details"):
                     st.plotly_chart(
                         plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"]),
-                        use_container_width=True,
+                        width="stretch",
                         key="map_panel_et_full",
                     )
                     st.metric("Actual ET at this cell", f"{cell['aet_mm_yr']:,.0f} mm/yr")
@@ -349,7 +349,7 @@ with tab1:
             st.write("Matched station(s) for this subbasin:")
             st.dataframe(
                 station_matches[["station_id", "name", "site_no", "gis_id", "subbasin"]],
-                use_container_width=True,
+                width="stretch",
             )
         else:
             st.info("No observation station matched to this subbasin.")
@@ -357,7 +357,7 @@ with tab1:
     if not plot_df.empty:
         st.plotly_chart(
             _subbasin_streamflow_fig(plot_df, selected_subbasin),
-            use_container_width=True,
+            width="stretch",
             config={"scrollZoom": True},
             key="tab_streamflow_chart",
         )
@@ -378,7 +378,7 @@ with tab1:
 
 
 with tab2:
-    st.plotly_chart(plot_fdc(bundle.streamflow_joined), use_container_width=True, key="tab_fdc_chart")
+    st.plotly_chart(plot_fdc(bundle.streamflow_joined), width="stretch", key="tab_fdc_chart")
 
 
 with tab3:
@@ -421,7 +421,7 @@ with tab3:
             else:
                 st.plotly_chart(
                     plot_well_timeseries(well_series, well_labels.get(selected_well, selected_well)),
-                    use_container_width=True,
+                    width="stretch",
                     key="tab_well_chart",
                 )
                 st.caption(
@@ -466,7 +466,7 @@ with tab4:
             else:
                 st.plotly_chart(
                     plot_reservoir_timeseries(dam_series, dam_labels.get(selected_dam, selected_dam)),
-                    use_container_width=True,
+                    width="stretch",
                     key="tab_reservoir_chart",
                 )
                 st.caption(
@@ -575,7 +575,7 @@ with tab5:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
                 config={"scrollZoom": True},
                 key="tab_sediment_chart",
             )
@@ -626,7 +626,7 @@ with tab6:
             col_a.metric("Median TDS (all sites w/ reading)", f"{median_tds:,.0f} mg/L")
             col_b.metric("Highest single reading", f"{max_tds:,.0f} mg/L")
 
-            st.plotly_chart(plot_tds_distribution(salinity_sites), use_container_width=True, key="tab_salinity_hist")
+            st.plotly_chart(plot_tds_distribution(salinity_sites), width="stretch", key="tab_salinity_hist")
 
             st.caption(
                 "Source: Houston, J.R. et al. (2019), USGS Pecos River Basin Salinity "
@@ -662,7 +662,7 @@ with tab7:
             col2.metric("Mean annual actual ET", f"{mean_aet:,.0f} mm/yr")
             col3.metric("ET / precipitation", f"{pct_closed:.0f}%")
 
-            st.plotly_chart(plot_et_water_balance(et_df), use_container_width=True, key="tab_et_chart")
+            st.plotly_chart(plot_et_water_balance(et_df), width="stretch", key="tab_et_chart")
 
             st.caption(
                 f"Source: TerraClimate monthly climate data (Abatzoglou et al. 2018), "
@@ -679,7 +679,7 @@ with tab7:
                 "instead of basin-averaged. Turn on **ET grid** in the Watershed Map "
                 "above to see it mapped, and click a cell for its exact value."
             )
-            st.plotly_chart(plot_et_grid_distribution(et_grid), use_container_width=True, key="tab_et_grid_hist")
+            st.plotly_chart(plot_et_grid_distribution(et_grid), width="stretch", key="tab_et_grid_hist")
     else:
         st.info("Real basin climate data is only available for the Pecos basin right now.")
 
@@ -687,4 +687,4 @@ with tab7:
 
 st.subheader("Summary table")
 summary_df = compute_basic_summary(bundle.streamflow_joined)
-st.dataframe(summary_df, use_container_width=True)
+st.dataframe(summary_df, width="stretch")

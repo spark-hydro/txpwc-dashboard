@@ -19,4 +19,4 @@ def plot_noaa_interactive(df, station_name):
             labels={"date": "Date", var: "Value"},
             template="plotly_white"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
