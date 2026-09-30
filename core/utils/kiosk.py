@@ -170,7 +170,9 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     position: relative;
     width: 100%;
     min-height: 100vh;
-    overflow: hidden;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -253,8 +255,6 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     padding: 18px 48px 16px;
     text-align: center;
     animation: kiosk-fade-up 0.9s ease-out;
-    max-height: 94vh;
-    overflow: hidden;
 }}
 
 .kiosk-logo-row {{
