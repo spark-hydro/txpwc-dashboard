@@ -17,12 +17,48 @@ import streamlit.components.v1 as components
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
 LAB_URL = "https://josephauresy.github.io/pecos-salinity-lab/"
 RESERVOIR_LAB_URL = "https://josephauresy.github.io/pecos-reservoirs/"
+PRECAL_URL = "https://josephauresy.github.io/pre_calibration_pecos/"
 REPO_URL = "https://github.com/spark-hydro/txpwc-dashboard"
 
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 QR_SVG_PATH = ASSETS_DIR / "qr_dashboard.svg"
 QR_LAB_SVG_PATH = ASSETS_DIR / "qr_lab.svg"
 QR_RESERVOIRS_SVG_PATH = ASSETS_DIR / "qr_reservoirs.svg"
+QR_PRECAL_SVG_PATH = ASSETS_DIR / "qr_precal.svg"
+
+# Small pictograms, one per lab card -- distinct from the institutional logos
+# (txpwc/water_center/ihydro_lab), which represent the consortium as a whole
+# and stay in the header row above. Fixed per-lab brand colors (matching the
+# same cards on the 3 GitHub Pages sites): Reservoir blue, Salt red, PreCal
+# teal -- same lab, same color, wherever its card appears.
+#
+# st.html() sanitizes with DOMPurify, which strips inline <svg> markup (the
+# rest of a kiosk-lab-item -- title, subtitle, QR <img> -- survives fine, but
+# a raw <svg> icon renders as an empty box). Embedding each icon as a
+# data-URI <img>, exactly like the QR codes already do, sidesteps that.
+def _svg_to_data_uri(svg: str) -> str:
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+
+
+_ICON_RESERVOIR_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4cc9f0" '
+    'stroke-width="1.7" stroke-linecap="round"><line x1="6" y1="3" x2="6" y2="21"/>'
+    '<path d="M9 8c2 0 2 2 4 2s2-2 4-2"/><path d="M9 13c2 0 2 2 4 2s2-2 4-2"/>'
+    '<path d="M9 18c2 0 2 2 4 2s2-2 4-2"/></svg>'
+)
+_ICON_SALT_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e0524a" '
+    'stroke-width="1.7" stroke-linejoin="round"><path d="M12 2l7 5v10l-7 5-7-5V7z"/>'
+    '<path d="M12 2v20M5 7l7 5 7-5M5 17l7-5 7 5"/></svg>'
+)
+_ICON_PRECAL_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#56b8d6" '
+    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 0 1 16 0"/>'
+    '<line x1="12" y1="18" x2="16" y2="10.5"/><circle cx="12" cy="18" r="1.3" fill="#56b8d6" stroke="none"/></svg>'
+)
+LAB_ICON_RESERVOIR_URI = _svg_to_data_uri(_ICON_RESERVOIR_SVG)
+LAB_ICON_SALT_URI = _svg_to_data_uri(_ICON_SALT_SVG)
+LAB_ICON_PRECAL_URI = _svg_to_data_uri(_ICON_PRECAL_SVG)
 LOGO_PATH = ASSETS_DIR / "logos" / "txpwc.png"
 LOGO_WATER_CENTER_PATH = ASSETS_DIR / "logos" / "water_center.png"
 LOGO_IHYDRO_PATH = ASSETS_DIR / "logos" / "ihydro_lab.png"
@@ -88,6 +124,8 @@ def render_kiosk() -> None:
     qr_lab_data_uri = f"data:image/svg+xml;base64,{qr_lab_b64}" if qr_lab_b64 else ""
     qr_res_b64 = _load_base64_image(str(QR_RESERVOIRS_SVG_PATH))
     qr_res_data_uri = f"data:image/svg+xml;base64,{qr_res_b64}" if qr_res_b64 else ""
+    qr_precal_b64 = _load_base64_image(str(QR_PRECAL_SVG_PATH))
+    qr_precal_data_uri = f"data:image/svg+xml;base64,{qr_precal_b64}" if qr_precal_b64 else ""
     logo_b64 = _load_base64_image(str(LOGO_PATH))
     logo_water_center_b64 = _load_base64_image(str(LOGO_WATER_CENTER_PATH))
     logo_ihydro_b64 = _load_base64_image(str(LOGO_IHYDRO_PATH))
@@ -132,7 +170,9 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     position: relative;
     width: 100%;
     min-height: 100vh;
-    overflow: hidden;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -215,8 +255,6 @@ header[data-testid="stHeader"], #MainMenu, footer {{
     padding: 18px 48px 16px;
     text-align: center;
     animation: kiosk-fade-up 0.9s ease-out;
-    max-height: 94vh;
-    overflow: hidden;
 }}
 
 .kiosk-logo-row {{
@@ -379,14 +417,26 @@ a.kiosk-lab-item:hover {{
 }}
 .kiosk-lab-item {{
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-radius: 14px;
-    background: rgba(110, 231, 216, 0.08);
+    gap: 8px;
+    padding: 16px 14px 14px;
+    border-radius: 16px;
+    background: rgba(8, 30, 42, 0.92);
     border: 1px solid rgba(110, 231, 216, 0.35);
-    flex: 1 1 280px;
-    max-width: 320px;
+    flex: 0 0 148px;
+    width: 148px;
+}}
+.kiosk-lab-icon {{
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(110, 231, 216, 0.14);
+    color: #6ee7d8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }}
 .kiosk-lab-qr {{
     background: #ffffff;
@@ -401,16 +451,16 @@ a.kiosk-lab-item:hover {{
     height: 58px;
 }}
 .kiosk-lab-text {{
-    text-align: left;
+    text-align: center;
 }}
 .kiosk-lab-title {{
-    font-size: 0.88rem;
+    font-size: 1rem;
     font-weight: 800;
     color: #ffffff;
     line-height: 1.25;
 }}
 .kiosk-lab-sub {{
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: #a9d8e6;
     margin-top: 1px;
     line-height: 1.3;
@@ -419,8 +469,8 @@ a.kiosk-lab-item:hover {{
 @media (max-width: 700px) {{
     .kiosk-card {{ padding: 20px 16px 18px; gap: 10px; }}
     .kiosk-stats {{ gap: 14px; }}
-    .kiosk-lab-row {{ flex-direction: column; align-items: stretch; }}
-    .kiosk-lab-item {{ max-width: none; }}
+    .kiosk-lab-row {{ flex-wrap: wrap; }}
+    .kiosk-lab-item {{ flex: 1 1 120px; width: auto; max-width: 160px; }}
 }}
 </style>
 
@@ -478,20 +528,24 @@ a.kiosk-lab-item:hover {{
     </div>
 
     <div class="kiosk-lab-row">
-      {f'''<a class="kiosk-lab-item" href="{LAB_URL}" target="_blank" rel="noopener">
-        <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the interactive salinity lab"></div>
-        <div class="kiosk-lab-text">
-          <div class="kiosk-lab-title">🧪 Salinity lab</div>
-          <div class="kiosk-lab-sub">Release water, watch it move through the aquifer</div>
-        </div>
-      </a>''' if qr_lab_data_uri else ''}
       {f'''<a class="kiosk-lab-item" href="{RESERVOIR_LAB_URL}" target="_blank" rel="noopener">
-        <div class="kiosk-lab-qr"><img src="{qr_res_data_uri}" alt="QR code to the interactive reservoir release lab"></div>
-        <div class="kiosk-lab-text">
-          <div class="kiosk-lab-title">🌊 Reservoir lab</div>
-          <div class="kiosk-lab-sub">Manage 5 real Pecos dams &amp; site reuse water</div>
-        </div>
+        <div class="kiosk-lab-icon"><img src="{LAB_ICON_RESERVOIR_URI}" width="26" height="26" alt=""></div>
+        <div class="kiosk-lab-text"><div class="kiosk-lab-title">Reservoir</div>
+          <div class="kiosk-lab-sub">Manage 5 real Pecos dams &amp; site reuse water</div></div>
+        <div class="kiosk-lab-qr"><img src="{qr_res_data_uri}" alt="QR code to the Reservoir lab"></div>
       </a>''' if qr_res_data_uri else ''}
+      {f'''<a class="kiosk-lab-item" href="{LAB_URL}" target="_blank" rel="noopener">
+        <div class="kiosk-lab-icon"><img src="{LAB_ICON_SALT_URI}" width="26" height="26" alt=""></div>
+        <div class="kiosk-lab-text"><div class="kiosk-lab-title">Salt</div>
+          <div class="kiosk-lab-sub">Release water, watch it move through the aquifer</div></div>
+        <div class="kiosk-lab-qr"><img src="{qr_lab_data_uri}" alt="QR code to the Salt lab"></div>
+      </a>''' if qr_lab_data_uri else ''}
+      {f'''<a class="kiosk-lab-item" href="{PRECAL_URL}" target="_blank" rel="noopener">
+        <div class="kiosk-lab-icon"><img src="{LAB_ICON_PRECAL_URI}" width="26" height="26" alt=""></div>
+        <div class="kiosk-lab-text"><div class="kiosk-lab-title">PreCal</div>
+          <div class="kiosk-lab-sub">Real model calibration status &amp; bug tracker</div></div>
+        <div class="kiosk-lab-qr"><img src="{qr_precal_data_uri}" alt="QR code to PreCal"></div>
+      </a>''' if qr_precal_data_uri else ''}
     </div>
 
     <div class="kiosk-footer">
