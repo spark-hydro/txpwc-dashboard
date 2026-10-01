@@ -90,8 +90,8 @@ def plot_station_obs_vs_sim(
     fig.add_trace(
         go.Scatter(
             x=pd.to_datetime(sim["year"], format="%Y"), y=sim["value_mgL"],
-            mode="lines+markers", name="Simulated (annual flux-weighted)",
-            line=dict(color="#0e7490", width=2), marker=dict(size=5),
+            mode="markers", name="Simulated (annual flux-weighted)",
+            marker=dict(size=7, color="#0e7490", symbol="diamond"),
         )
     )
 
