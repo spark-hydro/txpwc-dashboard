@@ -91,6 +91,32 @@ def render_sidebar() -> AppContext:
                     gap: 12px;
                     margin-top: 24px;
                 }}
+                .sidebar-devs {{
+                    margin-top: 18px;
+                    padding-top: 14px;
+                    border-top: 1px solid rgba(49, 51, 63, 0.1);
+                }}
+                .sidebar-devs .devs-label {{
+                    font-size: 11px;
+                    font-weight: 600;
+                    letter-spacing: 0.06em;
+                    text-transform: uppercase;
+                    color: rgba(49, 51, 63, 0.5);
+                    margin-bottom: 6px;
+                }}
+                .sidebar-devs .dev-row {{
+                    font-size: 13px;
+                    line-height: 1.5;
+                    color: rgba(49, 51, 63, 0.85);
+                }}
+                .sidebar-devs .dev-row a {{
+                    color: rgba(49, 51, 63, 0.55);
+                    text-decoration: none;
+                    font-size: 12px;
+                }}
+                .sidebar-devs .dev-row a:hover {{
+                    text-decoration: underline;
+                }}
             </style>
             <div class="sidebar-logos">
                 <a href="https://www.depts.ttu.edu/waterresources/" target="_blank">
@@ -101,6 +127,11 @@ def render_sidebar() -> AppContext:
                     <img src="data:image/png;base64,{get_base64_image('assets/logos/ihydro_lab.png')}"
                         style="width:65px;">
                 </a>
+            </div>
+            <div class="sidebar-devs">
+                <div class="devs-label">Developers</div>
+                <div class="dev-row">David Serrano &middot; <a href="mailto:davidser@ttu.edu">davidser@ttu.edu</a></div>
+                <div class="dev-row">Seonggyu Park &middot; <a href="mailto:seonggyu.park@ttu.edu">seonggyu.park@ttu.edu</a></div>
             </div>
             """,
             unsafe_allow_html=True,
