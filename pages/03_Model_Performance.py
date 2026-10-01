@@ -19,9 +19,11 @@ from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from core.io.salinity_reader import read_salinity_sites
 from core.io.climate_reader import read_et_basin_monthly, read_et_grid
 from core.io.gw_calibration_reader import read_gw_calibration_wells, read_gw_calibration_pairs
+from core.io.water_balance_reader import read_water_balance_annual
 from core.plotting.salinity import plot_tds_distribution
 from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
 from core.plotting.gw_calibration import plot_gw_obs_vs_sim_scatter, plot_gw_well_timeseries
+from core.plotting.water_balance import plot_annual_water_balance
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
 from core.io.txpwc_reader import read_observed_station_timeseries
@@ -48,9 +50,10 @@ if context.basin_id == "Pecos":
     et_grid = read_et_grid(bundle.basin_dir)
     gw_cal_wells = read_gw_calibration_wells(bundle.basin_dir)
     gw_cal_pairs = read_gw_calibration_pairs(bundle.basin_dir)
+    water_balance = read_water_balance_annual(bundle.basin_dir)
 else:
     wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
-    gw_cal_wells = gw_cal_pairs = pd.DataFrame()
+    gw_cal_wells = gw_cal_pairs = water_balance = pd.DataFrame()
 
 
 def _subbasin_streamflow_df(subbasin_id):
@@ -363,8 +366,8 @@ if bundle.subbasins_geojson is not None:
                     col_g3.metric("Bias (sim − obs)", f"{well_row['mean_bias_m']:+.0f} m")
 
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
-    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity", "Climate (ET)"]
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity", "Climate (ET)", "Water Balance"]
 )
 
 with tab1:
@@ -766,6 +769,27 @@ with tab7:
     else:
         st.info("Real basin climate data is only available for the Pecos basin right now.")
 
+
+with tab8:
+    st.subheader("Annual water balance (SWAT+gwflow model, 2000–2025)")
+    st.caption(
+        "Where the model sends water each year, at the whole-basin scale: "
+        "precipitation in, soil water, the surface/lateral/groundwater flow that "
+        "reaches the stream network, the exchange between the stream and the "
+        "aquifer, and a relative groundwater storage trend. This is the model's "
+        "own simulated balance, not an observed record."
+    )
+
+    if context.basin_id == "Pecos" and not water_balance.empty:
+        st.plotly_chart(plot_annual_water_balance(water_balance), use_container_width=True, key="tab_wb_chart")
+        st.caption(
+            "Groundwater discharge to the stream (dark blue, panel 3) is larger and "
+            "steadier than recharge or seepage in the opposite direction in almost "
+            "every year: the aquifer is a consistent net source of baseflow to the "
+            "channel network over the full 26-year record, not a sink."
+        )
+    else:
+        st.info("No water balance record found for this basin.")
 
 
 st.subheader("Summary table")
