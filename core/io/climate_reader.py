@@ -39,3 +39,14 @@ def read_et_grid(basin_dir: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame(columns=["lat", "lon", "aet_mm_yr"])
     return read_csv(path)
+
+
+@st.cache_data
+def read_et_spatial_comparison(basin_dir: Path) -> pd.DataFrame:
+    """1,148 0.1-deg grid cells: the model's own ET (HRU + groundwater, run
+    v33) against two remote-sensing products, SSEBop and TerraClimate, mean
+    annual mm/yr, 2010-2019."""
+    path = basin_dir / "et_spatial_comparison.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["lat", "lon", "model_et_mm", "ssebop_et_mm", "terraclimate_et_mm"])
+    return read_csv(path)

@@ -17,7 +17,7 @@ from core.plotting.reservoirs import plot_reservoir_timeseries
 from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
 from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from core.io.salinity_reader import read_salinity_sites
-from core.io.climate_reader import read_et_basin_monthly, read_et_grid
+from core.io.climate_reader import read_et_basin_monthly, read_et_grid, read_et_spatial_comparison
 from core.io.gw_calibration_reader import read_gw_calibration_wells, read_gw_calibration_pairs
 from core.io.water_balance_reader import read_water_balance_annual
 from core.io.streamflow_runs_reader import (
@@ -34,7 +34,12 @@ from core.io.salinity_simulation_reader import (
     read_salinity_reach_export,
 )
 from core.plotting.salinity import plot_tds_distribution, plot_station_obs_vs_sim, plot_source_contribution
-from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
+from core.plotting.climate import (
+    plot_et_water_balance,
+    plot_et_grid_distribution,
+    plot_et_spatial_map,
+    compute_et_spatial_stats,
+)
 from core.plotting.gw_calibration import plot_gw_obs_vs_sim_scatter, plot_gw_well_timeseries
 from core.plotting.water_balance import plot_annual_water_balance
 from core.plotting.streamflow_runs import compute_gauge_stats, plot_seasonal_shape, plot_multirun_timeseries
@@ -62,6 +67,7 @@ if context.basin_id == "Pecos":
     res_ts = read_reservoirs_monthly(bundle.basin_dir)
     salinity_sites = read_salinity_sites(bundle.basin_dir)
     et_grid = read_et_grid(bundle.basin_dir)
+    et_spatial = read_et_spatial_comparison(bundle.basin_dir)
     gw_cal_wells = read_gw_calibration_wells(bundle.basin_dir)
     gw_cal_pairs = read_gw_calibration_pairs(bundle.basin_dir)
     water_balance = read_water_balance_annual(bundle.basin_dir)
@@ -73,7 +79,7 @@ if context.basin_id == "Pecos":
     sal_contrib = read_salinity_source_contrib(bundle.basin_dir)
     sal_reach_export = read_salinity_reach_export(bundle.basin_dir)
 else:
-    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
+    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = et_spatial = pd.DataFrame()
     flow_gauges_meta = flow_monthly = pd.DataFrame()
     gw_cal_wells = gw_cal_pairs = water_balance = pd.DataFrame()
     sal_station_meta = sal_obs = sal_sim = sal_contrib = sal_reach_export = pd.DataFrame()
@@ -961,6 +967,51 @@ with tab7:
                 "above to see it mapped, and click a cell for its exact value."
             )
             st.plotly_chart(plot_et_grid_distribution(et_grid), use_container_width=True, key="tab_et_grid_hist")
+
+        if not et_spatial.empty:
+            st.divider()
+            st.subheader("Model vs. remote-sensing ET, 2010–2019")
+            st.caption(
+                "The model's own ET (HRU + groundwater ET, run v33) against a real "
+                "remote-sensing product, at 1,148 0.1° grid cells. Green means the "
+                "model evaporates more than the product, brown means less."
+            )
+            product_choice = st.radio(
+                "Compare against",
+                options=["ssebop_et_mm", "terraclimate_et_mm"],
+                format_func=lambda c: "SSEBop (MODIS, energy balance)" if c == "ssebop_et_mm" else "TerraClimate",
+                horizontal=True,
+            )
+            product_label = "SSEBop" if product_choice == "ssebop_et_mm" else "TerraClimate"
+
+            et_spatial_diff = et_spatial.assign(diff_mm=et_spatial["model_et_mm"] - et_spatial[product_choice])
+
+            col_m, col_p, col_d = st.columns(3)
+            with col_m:
+                st.plotly_chart(
+                    plot_et_spatial_map(et_spatial, "model_et_mm", "Model ET"),
+                    use_container_width=True, key="tab_et_spatial_model",
+                )
+            with col_p:
+                st.plotly_chart(
+                    plot_et_spatial_map(et_spatial, product_choice, f"{product_label} ET"),
+                    use_container_width=True, key="tab_et_spatial_product",
+                )
+            with col_d:
+                st.plotly_chart(
+                    plot_et_spatial_map(et_spatial_diff, "diff_mm", "Model − product", diverging=True),
+                    use_container_width=True, key="tab_et_spatial_diff",
+                )
+
+            spatial_stats = compute_et_spatial_stats(et_spatial["model_et_mm"], et_spatial[product_choice])
+            if spatial_stats:
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("NSE", f"{spatial_stats['nse']:.2f}")
+                c2.metric("KGE", f"{spatial_stats['kge']:.2f}")
+                c3.metric("PBIAS", f"{spatial_stats['pbias']:.1f}%")
+                c4.metric("R²", f"{spatial_stats['r2']:.2f}")
+                c5.metric("RMSE", f"{spatial_stats['rmse']:.1f} mm")
+                st.caption(f"n = {spatial_stats['n']:,} grid cells. Spatial pairs, not a time series.")
     else:
         st.info("Real basin climate data is only available for the Pecos basin right now.")
 
