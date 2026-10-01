@@ -152,17 +152,6 @@ def _subbasin_streamflow_fig(plot_df, subbasin_id, compact=False):
     return fig
 
 
-def _compact_fig(fig):
-    """Shrink an existing figure for the map's small click panel."""
-    fig.update_layout(
-        title="",
-        height=200,
-        showlegend=False,
-        margin=dict(l=10, r=10, t=10, b=10),
-    )
-    return fig
-
-
 st.title("Model Performance")
 st.caption("Initial end-to-end vertical slice: context selection → data load → metrics → plots.")
 st.subheader("Watershed Map")
@@ -250,161 +239,34 @@ if bundle.subbasins_geojson is not None:
             props = features[point_index].get("properties", {})
             subbasin_id = props.get("Subbasin")
             st.session_state["selected_subbasin"] = subbasin_id
-
-            with st.container(border=True):
-                st.markdown(f"**Subbasin {subbasin_id} — simulated streamflow**")
-                sf_plot_df, _ = _subbasin_streamflow_df(subbasin_id)
-                if sf_plot_df.empty:
-                    st.caption("No simulated series available for this subbasin.")
-                else:
-                    st.plotly_chart(
-                        _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=True),
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="map_panel_subbasin_compact",
-                    )
-                    with st.expander("See full-size chart & details"):
-                        st.plotly_chart(
-                            _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=False),
-                            use_container_width=True,
-                            key="map_panel_subbasin_full",
-                        )
-                        st.caption("Also on the Streamflow tab below, with sediment/metrics context.")
+            st.caption(f"Selected subbasin {subbasin_id} — see the Streamflow and Sediment Yield tabs below.")
 
         elif layer == "wells" and point_index is not None and 0 <= point_index < len(wells_meta):
             well_row = wells_meta.iloc[point_index]
             st.session_state["selected_well"] = well_row["id"]
-
-            with st.container(border=True):
-                st.markdown(f"**{well_row['label']} — water table depth**")
-                well_series = wells_ts[wells_ts["well_id"] == well_row["id"]]
-                if well_series.empty:
-                    st.caption("No time series available for this well.")
-                else:
-                    st.plotly_chart(
-                        _compact_fig(plot_well_timeseries(well_series, well_row["label"])),
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="map_panel_well_compact",
-                    )
-                    with st.expander("See full-size chart & details"):
-                        st.plotly_chart(
-                            plot_well_timeseries(well_series, well_row["label"]),
-                            use_container_width=True,
-                            key="map_panel_well_full",
-                        )
-                        col_w1, col_w2, col_w3 = st.columns(3)
-                        col_w1.metric("Source", well_row["source"])
-                        col_w2.metric("Readings", int(well_row["n_obs"]))
-                        col_w3.metric("Mean head", f"{well_row['mean_head_m']:.1f} m" if pd.notna(well_row["mean_head_m"]) else "NA")
+            st.caption(f"Selected {well_row['label']} — see the Groundwater tab below.")
 
         elif layer == "reservoirs" and point_index is not None and 0 <= point_index < len(res_meta):
             dam_row = res_meta.iloc[point_index]
             st.session_state["selected_dam"] = dam_row["dam_key"]
-
-            with st.container(border=True):
-                st.markdown(f"**{dam_row['name']} — release & storage**")
-                dam_series = res_ts[res_ts["dam_key"] == dam_row["dam_key"]]
-                if dam_series.empty:
-                    st.caption("No time series available for this dam.")
-                else:
-                    st.plotly_chart(
-                        _compact_fig(plot_reservoir_timeseries(dam_series, dam_row["name"])),
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                        key="map_panel_dam_compact",
-                    )
-                    with st.expander("See full-size chart & details"):
-                        st.plotly_chart(
-                            plot_reservoir_timeseries(dam_series, dam_row["name"]),
-                            use_container_width=True,
-                            key="map_panel_dam_full",
-                        )
+            st.caption(f"Selected {dam_row['name']} — see the Reservoirs tab below.")
 
         elif layer == "salinity" and point_index is not None and 0 <= point_index < len(salinity_plotted):
             site = salinity_plotted.iloc[point_index]
-            with st.container(border=True):
-                st.markdown(f"**{site['desc']}**")
-                st.caption(
-                    "No continuous time series exists per site (grab samples only) -- "
-                    "shown here is where this site's mean TDS falls in the basin-wide distribution."
-                )
-                st.plotly_chart(
-                    plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"], compact=True),
-                    use_container_width=True,
-                    config={"displayModeBar": False},
-                    key="map_panel_salinity_compact",
-                )
-                with st.expander("See full-size chart & details"):
-                    st.plotly_chart(
-                        plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"]),
-                        use_container_width=True,
-                        key="map_panel_salinity_full",
-                    )
-                    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-                    col_s1.metric("Mean TDS", f"{site['tds_mean']:,.0f} mg/L")
-                    col_s2.metric("Range", f"{site['tds_min']:,.0f}–{site['tds_max']:,.0f}")
-                    col_s3.metric("TDS samples", int(site["n_tds"]))
-                    col_s4.metric("Source", site["source"])
-                    st.caption(
-                        f"Isotope samples: {int(site['n_iso_samples'])} · "
-                        f"Sampled {site['date_oldest']} to {site['date_newest']}"
-                    )
+            st.caption(f"{site['desc']}: mean TDS {site['tds_mean']:,.0f} mg/L — see the Salinity tab below.")
 
         elif layer == "et_grid" and point_index is not None and 0 <= point_index < len(et_grid):
             cell = et_grid.iloc[point_index]
-            with st.container(border=True):
-                st.markdown(f"**Grid cell — {cell['lat']:.3f}, {cell['lon']:.3f}**")
-                st.caption(
-                    "Each cell is a 2000–2020 annual normal (TerraClimate), not a time "
-                    "series -- shown here is where this cell falls basin-wide."
-                )
-                st.plotly_chart(
-                    plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"], compact=True),
-                    use_container_width=True,
-                    config={"displayModeBar": False},
-                    key="map_panel_et_compact",
-                )
-                with st.expander("See full-size chart & details"):
-                    st.plotly_chart(
-                        plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"]),
-                        use_container_width=True,
-                        key="map_panel_et_full",
-                    )
-                    st.metric("Actual ET at this cell", f"{cell['aet_mm_yr']:,.0f} mm/yr")
+            st.caption(f"Grid cell {cell['lat']:.3f}, {cell['lon']:.3f}: {cell['aet_mm_yr']:,.0f} mm/yr actual ET — see the Climate (ET) tab below.")
 
         elif layer == "gw_calibration" and point_index is not None and 0 <= point_index < len(gw_cal_wells):
             well_row = gw_cal_wells.iloc[point_index]
             st.session_state["selected_gw_cal_well"] = well_row["id"]
-
-            with st.container(border=True):
-                st.markdown(f"**{well_row['id']} — depth to water table**")
-                well_pairs = gw_cal_pairs[gw_cal_pairs["id"] == well_row["id"]].sort_values("year")
-                st.plotly_chart(
-                    _compact_fig(plot_gw_well_timeseries(well_pairs, well_row["id"])),
-                    use_container_width=True,
-                    config={"displayModeBar": False},
-                    key="map_panel_gwcal_compact",
-                )
-                with st.expander("See full-size chart & details"):
-                    st.plotly_chart(
-                        plot_gw_well_timeseries(well_pairs, well_row["id"]),
-                        use_container_width=True,
-                        key="map_panel_gwcal_full",
-                    )
-                    col_g1, col_g2, col_g3 = st.columns(3)
-                    col_g1.metric("Mean observed", f"{well_row['mean_obs_m']:.0f} m")
-                    col_g2.metric("Mean simulated", f"{well_row['mean_sim_m']:.0f} m")
-                    col_g3.metric("Bias (sim − obs)", f"{well_row['mean_bias_m']:+.0f} m")
+            st.caption(f"Selected well {well_row['id']} — see the Groundwater tab below.")
 
         elif layer == "salt_export" and point_index is not None and 0 <= point_index < len(sal_reach_export):
             reach_row = sal_reach_export.iloc[point_index]
-            with st.container(border=True):
-                st.markdown(f"**Reach {int(reach_row['u'])} — simulated 26-yr mean salt export**")
-                col_r1, col_r2, col_r3 = st.columns(3)
-                col_r1.metric("Chloride", f"{reach_row['cl']:,.0f} kg/yr")
-                col_r2.metric("Sulfate", f"{reach_row['so4']:,.0f} kg/yr")
-                col_r3.metric("TDS", f"{reach_row['tds']:,.0f} kg/yr")
+            st.caption(f"Reach {int(reach_row['u'])}: simulated TDS export {reach_row['tds']:,.0f} kg/yr (26-yr mean).")
 
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
