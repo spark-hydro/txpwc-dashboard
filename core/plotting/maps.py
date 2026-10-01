@@ -187,6 +187,7 @@ def plot_watershed_overview(
     salinity_sites: pd.DataFrame | None = None,
     et_grid: pd.DataFrame | None = None,
     gw_calibration_wells: pd.DataFrame | None = None,
+    salt_reach_export: pd.DataFrame | None = None,
 ) -> tuple[go.Figure, list[str], pd.DataFrame]:
     """One shared watershed map with optional, toggleable real-data overlays.
 
@@ -320,6 +321,29 @@ def plot_watershed_overview(
             )
         )
         layer_order.append("gw_calibration")
+
+    if salt_reach_export is not None and not salt_reach_export.empty:
+        tds = salt_reach_export["tds"].clip(lower=1)
+        log_tds = np.log10(tds)
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=salt_reach_export["lat"],
+                lon=salt_reach_export["lon"],
+                mode="markers",
+                marker=dict(
+                    size=5,
+                    color=log_tds,
+                    colorscale="Reds",
+                    cmin=0, cmax=log_tds.max(),
+                    showscale=True,
+                    colorbar=dict(title="TDS export (kg/yr)", x=1.60),
+                ),
+                text=[f"TDS export: {v:,.0f} kg/yr" for v in salt_reach_export["tds"]],
+                hovertemplate="%{text}<extra></extra>",
+                name="Salt export (simulated)",
+            )
+        )
+        layer_order.append("salt_export")
 
     fig.update_layout(
         showlegend=True,

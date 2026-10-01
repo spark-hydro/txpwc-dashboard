@@ -26,7 +26,14 @@ from core.io.streamflow_runs_reader import (
     RUN_KEYS as FLOW_RUN_KEYS,
     RUN_LABELS as FLOW_RUN_LABELS,
 )
-from core.plotting.salinity import plot_tds_distribution
+from core.io.salinity_simulation_reader import (
+    read_salinity_station_meta,
+    read_salinity_station_observed,
+    read_salinity_station_simulated,
+    read_salinity_source_contrib,
+    read_salinity_reach_export,
+)
+from core.plotting.salinity import plot_tds_distribution, plot_station_obs_vs_sim, plot_source_contribution
 from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
 from core.plotting.gw_calibration import plot_gw_obs_vs_sim_scatter, plot_gw_well_timeseries
 from core.plotting.water_balance import plot_annual_water_balance
@@ -60,10 +67,16 @@ if context.basin_id == "Pecos":
     water_balance = read_water_balance_annual(bundle.basin_dir)
     flow_gauges_meta = read_streamflow_gauges_meta(bundle.basin_dir)
     flow_monthly = read_streamflow_monthly_obs_sim(bundle.basin_dir)
+    sal_station_meta = read_salinity_station_meta(bundle.basin_dir)
+    sal_obs = read_salinity_station_observed(bundle.basin_dir)
+    sal_sim = read_salinity_station_simulated(bundle.basin_dir)
+    sal_contrib = read_salinity_source_contrib(bundle.basin_dir)
+    sal_reach_export = read_salinity_reach_export(bundle.basin_dir)
 else:
     wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
     flow_gauges_meta = flow_monthly = pd.DataFrame()
     gw_cal_wells = gw_cal_pairs = water_balance = pd.DataFrame()
+    sal_station_meta = sal_obs = sal_sim = sal_contrib = sal_reach_export = pd.DataFrame()
 
 
 def _subbasin_streamflow_df(subbasin_id):
@@ -186,6 +199,8 @@ if bundle.subbasins_geojson is not None:
         layer_options.append("ET grid")
     if not gw_cal_wells.empty:
         layer_options.append("GW accuracy")
+    if not sal_reach_export.empty:
+        layer_options.append("Salt export (simulated)")
 
     with col_layers:
         show_layers = st.multiselect(
@@ -205,6 +220,7 @@ if bundle.subbasins_geojson is not None:
         salinity_sites=salinity_sites if "Salinity sites" in show_layers else None,
         et_grid=et_grid if "ET grid" in show_layers else None,
         gw_calibration_wells=gw_cal_wells if "GW accuracy" in show_layers else None,
+        salt_reach_export=sal_reach_export if "Salt export (simulated)" in show_layers else None,
     )
 
     map_event = st.plotly_chart(
@@ -374,6 +390,15 @@ if bundle.subbasins_geojson is not None:
                     col_g1.metric("Mean observed", f"{well_row['mean_obs_m']:.0f} m")
                     col_g2.metric("Mean simulated", f"{well_row['mean_sim_m']:.0f} m")
                     col_g3.metric("Bias (sim − obs)", f"{well_row['mean_bias_m']:+.0f} m")
+
+        elif layer == "salt_export" and point_index is not None and 0 <= point_index < len(sal_reach_export):
+            reach_row = sal_reach_export.iloc[point_index]
+            with st.container(border=True):
+                st.markdown(f"**Reach {int(reach_row['u'])} — simulated 26-yr mean salt export**")
+                col_r1, col_r2, col_r3 = st.columns(3)
+                col_r1.metric("Chloride", f"{reach_row['cl']:,.0f} kg/yr")
+                col_r2.metric("Sulfate", f"{reach_row['so4']:,.0f} kg/yr")
+                col_r3.metric("TDS", f"{reach_row['tds']:,.0f} kg/yr")
 
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
@@ -794,13 +819,12 @@ with tab6:
     st.caption(
         "4,283 real water-quality sampling sites inside the Pecos watershed "
         "(USGS, NMED, TCEQ), compiled in the Houston et al. (2019) USGS Pecos "
-        "River Basin Salinity Assessment. SWAT+gwflow does not yet include a "
-        "salinity-transport module, so this is an **observed-data inventory**, "
-        "not an observed-vs-simulated comparison — that will follow once the "
-        "module is added and calibrated (see the [Hydrology](/Hydrology) roadmap). "
-        "For a conceptual, interactive treatment of salinity transport in the "
-        "meantime, see the [Salinity Lab](/Water_Quality). Turn on **Salinity "
-        "sites** in the Watershed Map above to see them plotted."
+        "River Basin Salinity Assessment. Most of this is an **observed-data "
+        "inventory** — the model's salinity routing only has simulated output "
+        "at a handful of gauges so far (below). For a conceptual, interactive "
+        "treatment of salinity transport in the meantime, see the "
+        "[Salinity Lab](/Water_Quality). Turn on **Salinity sites** in the "
+        "Watershed Map above to see them plotted."
     )
 
     if context.basin_id == "Pecos":
@@ -833,6 +857,65 @@ with tab6:
             )
     else:
         st.info("Real salinity site data is only available for the Pecos basin right now.")
+
+    st.divider()
+    st.subheader("Real salinity observed against simulated")
+    st.caption(
+        "Real Water Quality Portal grab samples against the model's own annual "
+        "flux-weighted concentration, at the 6 USGS gauges where the model's "
+        "channel salt routing has simulated output. Pick a gauge and a "
+        "constituent; hover a point for its date/value."
+    )
+
+    if context.basin_id == "Pecos" and not sal_station_meta.empty:
+        sal_station_options = sal_station_meta["site"].tolist()
+        sal_station_labels = dict(zip(sal_station_meta["site"], sal_station_meta["station"]))
+
+        col_sal1, col_sal2 = st.columns(2)
+        with col_sal1:
+            selected_sal_site = st.selectbox(
+                "Station",
+                options=sal_station_options,
+                format_func=lambda s: sal_station_labels.get(s, s),
+            )
+        with col_sal2:
+            selected_constituent = st.selectbox(
+                "Constituent",
+                options=["cl", "so4", "tds"],
+                format_func=lambda c: {"cl": "Chloride", "so4": "Sulfate", "tds": "TDS"}[c],
+            )
+
+        st.plotly_chart(
+            plot_station_obs_vs_sim(sal_obs, sal_sim, selected_sal_site, selected_constituent),
+            use_container_width=True,
+            key="tab_salinity_obs_sim_chart",
+        )
+
+        overlap_years = sal_sim[(sal_sim["site"] == selected_sal_site) & (sal_sim["constituent"] == selected_constituent)]["year"].nunique()
+        station_row = sal_station_meta[sal_station_meta["site"] == selected_sal_site].iloc[0]
+        n_obs = int(station_row[f"n_{selected_constituent}"])
+        st.caption(
+            f"{sal_station_labels.get(selected_sal_site, selected_sal_site)}: {n_obs:,} observed samples "
+            f"(site {selected_sal_site}), full period of record. Simulated: {overlap_years} years "
+            "(v52_prod, annual flux-weighted)."
+        )
+
+    st.divider()
+    st.subheader("Where the salt comes from")
+    st.caption(
+        "Mean annual chloride load, simulated: groundwater export to streams "
+        "against the basin's two mapped point sources. Chloride and sulfate "
+        "follow the same pathway in this model (same initial-condition bands)."
+    )
+
+    if context.basin_id == "Pecos" and not sal_contrib.empty:
+        contrib_row = sal_contrib.iloc[0].to_dict()
+        st.plotly_chart(plot_source_contribution(contrib_row), use_container_width=True, key="tab_salinity_contrib_chart")
+        gw_share = contrib_row["groundwater_t_yr"] / sum(contrib_row.values()) * 100
+        st.caption(
+            f"Groundwater accounts for ~{gw_share:.0f}% of mapped chloride export in this "
+            "model — roughly 7× the two point sources combined."
+        )
 
 
 with tab7:
