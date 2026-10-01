@@ -18,8 +18,10 @@ from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_month
 from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from core.io.salinity_reader import read_salinity_sites
 from core.io.climate_reader import read_et_basin_monthly, read_et_grid
+from core.io.gw_calibration_reader import read_gw_calibration_wells, read_gw_calibration_pairs
 from core.plotting.salinity import plot_tds_distribution
 from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
+from core.plotting.gw_calibration import plot_gw_obs_vs_sim_scatter, plot_gw_well_timeseries
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
 from core.io.txpwc_reader import read_observed_station_timeseries
@@ -44,8 +46,11 @@ if context.basin_id == "Pecos":
     res_ts = read_reservoirs_monthly(bundle.basin_dir)
     salinity_sites = read_salinity_sites(bundle.basin_dir)
     et_grid = read_et_grid(bundle.basin_dir)
+    gw_cal_wells = read_gw_calibration_wells(bundle.basin_dir)
+    gw_cal_pairs = read_gw_calibration_pairs(bundle.basin_dir)
 else:
     wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
+    gw_cal_wells = gw_cal_pairs = pd.DataFrame()
 
 
 def _subbasin_streamflow_df(subbasin_id):
@@ -166,6 +171,8 @@ if bundle.subbasins_geojson is not None:
         layer_options.append("Salinity sites")
     if not et_grid.empty:
         layer_options.append("ET grid")
+    if not gw_cal_wells.empty:
+        layer_options.append("GW accuracy")
 
     with col_layers:
         show_layers = st.multiselect(
@@ -184,6 +191,7 @@ if bundle.subbasins_geojson is not None:
         reservoirs_meta=res_meta if "Reservoirs" in show_layers else None,
         salinity_sites=salinity_sites if "Salinity sites" in show_layers else None,
         et_grid=et_grid if "ET grid" in show_layers else None,
+        gw_calibration_wells=gw_cal_wells if "GW accuracy" in show_layers else None,
     )
 
     map_event = st.plotly_chart(
@@ -330,6 +338,30 @@ if bundle.subbasins_geojson is not None:
                     )
                     st.metric("Actual ET at this cell", f"{cell['aet_mm_yr']:,.0f} mm/yr")
 
+        elif layer == "gw_calibration" and point_index is not None and 0 <= point_index < len(gw_cal_wells):
+            well_row = gw_cal_wells.iloc[point_index]
+            st.session_state["selected_gw_cal_well"] = well_row["id"]
+
+            with st.container(border=True):
+                st.markdown(f"**{well_row['id']} — depth to water table**")
+                well_pairs = gw_cal_pairs[gw_cal_pairs["id"] == well_row["id"]].sort_values("year")
+                st.plotly_chart(
+                    _compact_fig(plot_gw_well_timeseries(well_pairs, well_row["id"])),
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                    key="map_panel_gwcal_compact",
+                )
+                with st.expander("See full-size chart & details"):
+                    st.plotly_chart(
+                        plot_gw_well_timeseries(well_pairs, well_row["id"]),
+                        use_container_width=True,
+                        key="map_panel_gwcal_full",
+                    )
+                    col_g1, col_g2, col_g3 = st.columns(3)
+                    col_g1.metric("Mean observed", f"{well_row['mean_obs_m']:.0f} m")
+                    col_g2.metric("Mean simulated", f"{well_row['mean_sim_m']:.0f} m")
+                    col_g3.metric("Bias (sim − obs)", f"{well_row['mean_bias_m']:+.0f} m")
+
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
     ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity", "Climate (ET)"]
@@ -382,10 +414,61 @@ with tab2:
 
 
 with tab3:
-    st.subheader("Real groundwater monitoring wells")
+    st.subheader("Observed against simulated depth to water table")
     st.caption(
-        "60 real USGS NWIS / TWDB observation wells over the Pecos gwflow grid — "
-        "independent of the small demo dataset used elsewhere on this page. "
+        "Every well-year at 51 real USGS/TWDB observation wells: depth to water "
+        "table as reported at the well, against the model's own simulated depth "
+        "in that well's grid cell. Points on the dashed 1:1 line would be a "
+        "perfect match."
+    )
+
+    if context.basin_id == "Pecos" and not gw_cal_pairs.empty:
+        bias = gw_cal_pairs["sim_depth_m"] - gw_cal_pairs["obs_depth_m"]
+        rmse = (bias ** 2).mean() ** 0.5
+        within5 = (bias.abs() < 5).mean() * 100
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Wells", gw_cal_pairs["id"].nunique())
+        col2.metric("Well-years", len(gw_cal_pairs))
+        col3.metric("Bias (sim − obs)", f"{bias.mean():+.1f} m")
+        col4.metric("Within 5 m", f"{within5:.0f}%")
+
+        st.plotly_chart(plot_gw_obs_vs_sim_scatter(gw_cal_pairs), use_container_width=True, key="tab_gwcal_scatter")
+        st.caption(
+            "Nearly all points sit below the 1:1 line (simulated depth smaller than "
+            "observed): the model's water table sits higher/shallower than the real "
+            "wells. Turn on **GW accuracy** in the Watershed Map above to see it by "
+            "location, or pick a well below for its own record through time."
+        )
+
+        gwcal_options = sorted(gw_cal_wells["id"].tolist())
+        current_gwcal = st.session_state.get("selected_gw_cal_well", gwcal_options[0])
+        if current_gwcal not in gwcal_options:
+            current_gwcal = gwcal_options[0]
+
+        selected_gwcal = st.selectbox("Well", options=gwcal_options, index=gwcal_options.index(current_gwcal))
+        st.session_state["selected_gw_cal_well"] = selected_gwcal
+
+        well_pairs = gw_cal_pairs[gw_cal_pairs["id"] == selected_gwcal].sort_values("year")
+        st.plotly_chart(
+            plot_gw_well_timeseries(well_pairs, selected_gwcal),
+            use_container_width=True,
+            key="tab_gwcal_well_chart",
+        )
+        st.caption(
+            "Caveats: a well is a point and the model cell averages several km²; the "
+            "model has one soil/aquifer layer, so deep or confined wells cannot match. "
+            "Well-years beyond 130 m depth to water (either observed or simulated) "
+            "are excluded as not comparable at this resolution."
+        )
+    else:
+        st.info("No observed-vs-simulated well data found for this basin.")
+
+    st.divider()
+    st.subheader("Other real groundwater monitoring wells")
+    st.caption(
+        "60 more real USGS NWIS / TWDB observation wells over the Pecos gwflow grid — "
+        "observed head only, no simulated comparison yet. "
         "Turn on **Groundwater wells** in the Watershed Map above and click one, "
         "or just pick one from the list below."
     )
