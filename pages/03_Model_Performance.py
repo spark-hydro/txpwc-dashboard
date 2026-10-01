@@ -383,14 +383,19 @@ with tab3:
 
     if context.basin_id == "Pecos" and not gw_cal_pairs.empty:
         bias = gw_cal_pairs["sim_depth_m"] - gw_cal_pairs["obs_depth_m"]
+        mae = bias.abs().mean()
         rmse = (bias ** 2).mean() ** 0.5
+        r2 = gw_cal_pairs["obs_depth_m"].corr(gw_cal_pairs["sim_depth_m"]) ** 2
         within5 = (bias.abs() < 5).mean() * 100
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
         col1.metric("Wells", gw_cal_pairs["id"].nunique())
         col2.metric("Well-years", len(gw_cal_pairs))
         col3.metric("Bias (sim − obs)", f"{bias.mean():+.1f} m")
-        col4.metric("Within 5 m", f"{within5:.0f}%")
+        col4.metric("MAE", f"{mae:.1f} m")
+        col5.metric("RMSE", f"{rmse:.1f} m")
+        col6.metric("R²", f"{r2:.2f}")
+        col7.metric("Within 5 m", f"{within5:.0f}%")
 
         st.plotly_chart(plot_gw_obs_vs_sim_scatter(gw_cal_pairs), width="stretch", key="tab_gwcal_scatter")
         st.caption(
