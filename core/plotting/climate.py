@@ -5,8 +5,14 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False) -> go.Figure:
-    """One 0.1-deg ET grid as colored points: model, a product, or their difference."""
+def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False, shared_cmax: float | None = None) -> go.Figure:
+    """One 0.1-deg ET grid as colored points: model, a product, or their difference.
+
+    Pass ``shared_cmax`` (the max of both the model and the product) so the
+    two non-diverging maps share one color scale -- otherwise each map
+    scales to its own max and a visually "deeper green" cell can actually
+    be the lower value.
+    """
     fig = go.Figure()
     vals = df[column]
 
@@ -14,7 +20,7 @@ def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bo
         bound = max(abs(vals.min()), abs(vals.max()), 1)
         colorscale, cmin, cmax = "RdYlGn", -bound, bound
     else:
-        colorscale, cmin, cmax = "YlGn", 0, vals.max()
+        colorscale, cmin, cmax = "YlGn", 0, shared_cmax if shared_cmax is not None else vals.max()
 
     fig.add_trace(
         go.Scattermapbox(
@@ -29,7 +35,7 @@ def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bo
     fig.update_layout(
         mapbox_style="open-street-map",
         mapbox_center={"lat": df["lat"].mean(), "lon": df["lon"].mean()},
-        mapbox_zoom=5.3,
+        mapbox_zoom=4.85,
         margin=dict(l=0, r=0, t=30, b=0),
         height=380,
         title=title,

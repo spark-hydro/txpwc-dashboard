@@ -847,16 +847,17 @@ with tab7:
             product_label = "SSEBop" if product_choice == "ssebop_et_mm" else "TerraClimate"
 
             et_spatial_diff = et_spatial.assign(diff_mm=et_spatial["model_et_mm"] - et_spatial[product_choice])
+            shared_cmax = max(et_spatial["model_et_mm"].max(), et_spatial[product_choice].max())
 
             col_m, col_p, col_d = st.columns(3)
             with col_m:
                 st.plotly_chart(
-                    plot_et_spatial_map(et_spatial, "model_et_mm", "Model ET"),
+                    plot_et_spatial_map(et_spatial, "model_et_mm", "Model ET", shared_cmax=shared_cmax),
                     width="stretch", key="tab_et_spatial_model",
                 )
             with col_p:
                 st.plotly_chart(
-                    plot_et_spatial_map(et_spatial, product_choice, f"{product_label} ET"),
+                    plot_et_spatial_map(et_spatial, product_choice, f"{product_label} ET", shared_cmax=shared_cmax),
                     width="stretch", key="tab_et_spatial_product",
                 )
             with col_d:
@@ -867,9 +868,7 @@ with tab7:
 
             spatial_stats = compute_et_spatial_stats(et_spatial["model_et_mm"], et_spatial[product_choice])
             if spatial_stats:
-                c1, c2, c3, c4, c5 = st.columns(5)
-                c1.metric("NSE", f"{spatial_stats['nse']:.2f}")
-                c2.metric("KGE", f"{spatial_stats['kge']:.2f}")
+                c3, c4, c5 = st.columns(3)
                 c3.metric("PBIAS", f"{spatial_stats['pbias']:.1f}%")
                 c4.metric("R²", f"{spatial_stats['r2']:.2f}")
                 c5.metric("RMSE", f"{spatial_stats['rmse']:.1f} mm")
