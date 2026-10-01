@@ -5,10 +5,10 @@ dependencies:
   - python=3.14
   - pip
   - pip:
-      - streamlit>=1.40
+      - streamlit>=1.50
       - pandas>=2.0
       - numpy>=1.24
-      - plotly>=5.20
+      - plotly>=5.24
       - folium>=0.15
       - streamlit-folium>=0.20
       - geopandas>=0.14

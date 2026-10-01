@@ -220,7 +220,7 @@ if bundle.subbasins_geojson is not None:
 
     map_event = st.plotly_chart(
         fig,
-        use_container_width=True,
+        width="stretch",
         on_select="rerun",
         selection_mode="points",
         config={"scrollZoom": True},
@@ -287,7 +287,7 @@ with tab1:
             st.write("Matched station(s) for this subbasin:")
             st.dataframe(
                 station_matches[["station_id", "name", "site_no", "gis_id", "subbasin"]],
-                use_container_width=True,
+                width="stretch",
             )
         else:
             st.info("No observation station matched to this subbasin.")
@@ -295,7 +295,7 @@ with tab1:
     if not plot_df.empty:
         st.plotly_chart(
             _subbasin_streamflow_fig(plot_df, selected_subbasin),
-            use_container_width=True,
+            width="stretch",
             config={"scrollZoom": True},
             key="tab_streamflow_chart",
         )
@@ -342,7 +342,7 @@ with tab1:
         if selected_flow_runs:
             st.plotly_chart(
                 plot_multirun_timeseries(flow_monthly, selected_flow_gauge, selected_flow_runs, log_scale=log_scale),
-                use_container_width=True,
+                width="stretch",
                 key="tab_flow_multirun_chart",
             )
 
@@ -369,7 +369,7 @@ with tab1:
 
 
 with tab2:
-    st.plotly_chart(plot_fdc(bundle.streamflow_joined), use_container_width=True, key="tab_fdc_chart")
+    st.plotly_chart(plot_fdc(bundle.streamflow_joined), width="stretch", key="tab_fdc_chart")
 
 
 with tab3:
@@ -392,7 +392,7 @@ with tab3:
         col3.metric("Bias (sim − obs)", f"{bias.mean():+.1f} m")
         col4.metric("Within 5 m", f"{within5:.0f}%")
 
-        st.plotly_chart(plot_gw_obs_vs_sim_scatter(gw_cal_pairs), use_container_width=True, key="tab_gwcal_scatter")
+        st.plotly_chart(plot_gw_obs_vs_sim_scatter(gw_cal_pairs), width="stretch", key="tab_gwcal_scatter")
         st.caption(
             "Nearly all points sit below the 1:1 line (simulated depth smaller than "
             "observed): the model's water table sits higher/shallower than the real "
@@ -411,7 +411,7 @@ with tab3:
         well_pairs = gw_cal_pairs[gw_cal_pairs["id"] == selected_gwcal].sort_values("year")
         st.plotly_chart(
             plot_gw_well_timeseries(well_pairs, selected_gwcal),
-            use_container_width=True,
+            width="stretch",
             key="tab_gwcal_well_chart",
         )
         st.caption(
@@ -463,7 +463,7 @@ with tab3:
             else:
                 st.plotly_chart(
                     plot_well_timeseries(well_series, well_labels.get(selected_well, selected_well)),
-                    use_container_width=True,
+                    width="stretch",
                     key="tab_well_chart",
                 )
                 st.caption(
@@ -508,7 +508,7 @@ with tab4:
             else:
                 st.plotly_chart(
                     plot_reservoir_timeseries(dam_series, dam_labels.get(selected_dam, selected_dam)),
-                    use_container_width=True,
+                    width="stretch",
                     key="tab_reservoir_chart",
                 )
                 st.caption(
@@ -549,7 +549,7 @@ with tab4:
                 else:
                     st.plotly_chart(
                         plot_seasonal_shape(shape_stats, selected_res_run, normalize=normalize_shape),
-                        use_container_width=True,
+                        width="stretch",
                         key="tab_res_shape_chart",
                     )
                     c1, c2, c3, c4, c5, c6 = st.columns(6)
@@ -666,7 +666,7 @@ with tab5:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
                 config={"scrollZoom": True},
                 key="tab_sediment_chart",
             )
@@ -716,7 +716,7 @@ with tab6:
             col_a.metric("Median TDS (all sites w/ reading)", f"{median_tds:,.0f} mg/L")
             col_b.metric("Highest single reading", f"{max_tds:,.0f} mg/L")
 
-            st.plotly_chart(plot_tds_distribution(salinity_sites), use_container_width=True, key="tab_salinity_hist")
+            st.plotly_chart(plot_tds_distribution(salinity_sites), width="stretch", key="tab_salinity_hist")
 
             st.caption(
                 "Source: Houston, J.R. et al. (2019), USGS Pecos River Basin Salinity "
@@ -755,7 +755,7 @@ with tab6:
 
         st.plotly_chart(
             plot_station_obs_vs_sim(sal_obs, sal_sim, selected_sal_site, selected_constituent),
-            use_container_width=True,
+            width="stretch",
             key="tab_salinity_obs_sim_chart",
         )
 
@@ -778,7 +778,7 @@ with tab6:
 
     if context.basin_id == "Pecos" and not sal_contrib.empty:
         contrib_row = sal_contrib.iloc[0].to_dict()
-        st.plotly_chart(plot_source_contribution(contrib_row), use_container_width=True, key="tab_salinity_contrib_chart")
+        st.plotly_chart(plot_source_contribution(contrib_row), width="stretch", key="tab_salinity_contrib_chart")
         gw_share = contrib_row["groundwater_t_yr"] / sum(contrib_row.values()) * 100
         st.caption(
             f"Groundwater accounts for ~{gw_share:.0f}% of mapped chloride export in this "
@@ -811,7 +811,7 @@ with tab7:
             col2.metric("Mean annual actual ET", f"{mean_aet:,.0f} mm/yr")
             col3.metric("ET / precipitation", f"{pct_closed:.0f}%")
 
-            st.plotly_chart(plot_et_water_balance(et_df), use_container_width=True, key="tab_et_chart")
+            st.plotly_chart(plot_et_water_balance(et_df), width="stretch", key="tab_et_chart")
 
             st.caption(
                 f"Source: TerraClimate monthly climate data (Abatzoglou et al. 2018), "
@@ -828,7 +828,7 @@ with tab7:
                 "instead of basin-averaged. Turn on **ET grid** in the Watershed Map "
                 "above to see it mapped, and click a cell for its exact value."
             )
-            st.plotly_chart(plot_et_grid_distribution(et_grid), use_container_width=True, key="tab_et_grid_hist")
+            st.plotly_chart(plot_et_grid_distribution(et_grid), width="stretch", key="tab_et_grid_hist")
 
         if not et_spatial.empty:
             st.divider()
@@ -852,17 +852,17 @@ with tab7:
             with col_m:
                 st.plotly_chart(
                     plot_et_spatial_map(et_spatial, "model_et_mm", "Model ET"),
-                    use_container_width=True, key="tab_et_spatial_model",
+                    width="stretch", key="tab_et_spatial_model",
                 )
             with col_p:
                 st.plotly_chart(
                     plot_et_spatial_map(et_spatial, product_choice, f"{product_label} ET"),
-                    use_container_width=True, key="tab_et_spatial_product",
+                    width="stretch", key="tab_et_spatial_product",
                 )
             with col_d:
                 st.plotly_chart(
                     plot_et_spatial_map(et_spatial_diff, "diff_mm", "Model − product", diverging=True),
-                    use_container_width=True, key="tab_et_spatial_diff",
+                    width="stretch", key="tab_et_spatial_diff",
                 )
 
             spatial_stats = compute_et_spatial_stats(et_spatial["model_et_mm"], et_spatial[product_choice])
@@ -889,7 +889,7 @@ with tab8:
     )
 
     if context.basin_id == "Pecos" and not water_balance.empty:
-        st.plotly_chart(plot_annual_water_balance(water_balance), use_container_width=True, key="tab_wb_chart")
+        st.plotly_chart(plot_annual_water_balance(water_balance), width="stretch", key="tab_wb_chart")
         st.caption(
             "Groundwater discharge to the stream (dark blue, panel 3) is larger and "
             "steadier than recharge or seepage in the opposite direction in almost "
@@ -902,4 +902,4 @@ with tab8:
 
 st.subheader("Summary table")
 summary_df = compute_basic_summary(bundle.streamflow_joined)
-st.dataframe(summary_df, use_container_width=True)
+st.dataframe(summary_df, width="stretch")

@@ -23,7 +23,7 @@ def main():
 
     gdf = gpd.read_file(shp_path)
 
-    # Ensure WGS84 (required for mapbox)
+    # Ensure WGS84 (required for web maps)
     if gdf.crs is not None:
         gdf = gdf.to_crs(epsg=4326)
 

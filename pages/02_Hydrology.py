@@ -133,7 +133,7 @@ if context.basin_id == "Pecos":
     )
     if flow_history_path.exists():
         flow_history = pd.read_csv(flow_history_path)
-        st.plotly_chart(plot_annual_flow_trend(flow_history), use_container_width=True)
+        st.plotly_chart(plot_annual_flow_trend(flow_history), width="stretch")
         st.caption(
             "Source: USGS National Water Information System, site 08446500 "
             "(Pecos River near Girvin, TX), daily mean discharge, accessed August 2026. "
@@ -154,9 +154,9 @@ if context.basin_id == "Pecos":
 
     col1, col2 = st.columns(2)
     with col1:
-        st.plotly_chart(plot_streamflow_hydrograph(bundle.streamflow_joined), use_container_width=True)
+        st.plotly_chart(plot_streamflow_hydrograph(bundle.streamflow_joined), width="stretch")
     with col2:
-        st.plotly_chart(plot_fdc(bundle.streamflow_joined), use_container_width=True)
+        st.plotly_chart(plot_fdc(bundle.streamflow_joined), width="stretch")
 
     if not bundle.groundwater.empty:
-        st.plotly_chart(plot_groundwater_scatter(bundle.groundwater), use_container_width=True)
+        st.plotly_chart(plot_groundwater_scatter(bundle.groundwater), width="stretch")
