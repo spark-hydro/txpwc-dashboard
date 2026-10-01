@@ -20,10 +20,17 @@ from core.io.salinity_reader import read_salinity_sites
 from core.io.climate_reader import read_et_basin_monthly, read_et_grid
 from core.io.gw_calibration_reader import read_gw_calibration_wells, read_gw_calibration_pairs
 from core.io.water_balance_reader import read_water_balance_annual
+from core.io.streamflow_runs_reader import (
+    read_streamflow_gauges_meta,
+    read_streamflow_monthly_obs_sim,
+    RUN_KEYS as FLOW_RUN_KEYS,
+    RUN_LABELS as FLOW_RUN_LABELS,
+)
 from core.plotting.salinity import plot_tds_distribution
 from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
 from core.plotting.gw_calibration import plot_gw_obs_vs_sim_scatter, plot_gw_well_timeseries
 from core.plotting.water_balance import plot_annual_water_balance
+from core.plotting.streamflow_runs import compute_gauge_stats, plot_seasonal_shape, plot_multirun_timeseries
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
 from core.io.txpwc_reader import read_observed_station_timeseries
@@ -51,8 +58,11 @@ if context.basin_id == "Pecos":
     gw_cal_wells = read_gw_calibration_wells(bundle.basin_dir)
     gw_cal_pairs = read_gw_calibration_pairs(bundle.basin_dir)
     water_balance = read_water_balance_annual(bundle.basin_dir)
+    flow_gauges_meta = read_streamflow_gauges_meta(bundle.basin_dir)
+    flow_monthly = read_streamflow_monthly_obs_sim(bundle.basin_dir)
 else:
     wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
+    flow_gauges_meta = flow_monthly = pd.DataFrame()
     gw_cal_wells = gw_cal_pairs = water_balance = pd.DataFrame()
 
 
@@ -408,6 +418,59 @@ with tab1:
     else:
         st.info("Metrics not available because no observed streamflow is matched to this subbasin.")
 
+    st.divider()
+    st.subheader("Real USGS gauges against the model's best full-period runs")
+    st.caption(
+        "Monthly flow at 10 real USGS gauges across the basin — main-stem, "
+        "reservoir-outlet, and tributary — against the three model runs that "
+        "cover the complete 2000–2025 period. Of the many shorter screening runs "
+        "tried during development, these are the ones run over the full record. "
+        "The comparison itself covers 2002–2007, the common window with cached "
+        "observations across every run."
+    )
+
+    if not flow_gauges_meta.empty:
+        flow_gauge_options = flow_gauges_meta["id"].tolist()
+        flow_gauge_labels = dict(zip(flow_gauges_meta["id"], flow_gauges_meta["label"]))
+        selected_flow_gauge = st.selectbox(
+            "Gauge",
+            options=flow_gauge_options,
+            format_func=lambda g: flow_gauge_labels.get(g, g),
+        )
+        selected_flow_runs = st.multiselect(
+            "Runs",
+            options=FLOW_RUN_KEYS,
+            default=FLOW_RUN_KEYS,
+            format_func=lambda r: FLOW_RUN_LABELS.get(r, r),
+        )
+
+        log_scale = st.checkbox("Log scale (recommended — flow spans orders of magnitude)", value=True)
+
+        if selected_flow_runs:
+            st.plotly_chart(
+                plot_multirun_timeseries(flow_monthly, selected_flow_gauge, selected_flow_runs, log_scale=log_scale),
+                use_container_width=True,
+                key="tab_flow_multirun_chart",
+            )
+
+            for run_key in selected_flow_runs:
+                run_stats = compute_gauge_stats(flow_monthly, selected_flow_gauge, run_key)
+                st.caption(f"**{FLOW_RUN_LABELS.get(run_key, run_key)}**")
+                if run_stats is None:
+                    st.info("Fewer than 12 overlapping months at this gauge for this run.")
+                    continue
+                c1, c2, c3, c4, c5, c6 = st.columns(6)
+                c1.metric("NSE", f"{run_stats['nse']:.2f}")
+                c2.metric("KGE", f"{run_stats['kge']:.2f}")
+                c3.metric("PBIAS", f"{run_stats['pbias']:.1f}%")
+                c4.metric("R²", f"{run_stats['r2']:.2f}")
+                c5.metric("RMSE", f"{run_stats['rmse']:.2f} m³/s")
+                c6.metric("n (months)", run_stats["n"])
+        else:
+            st.info("Pick at least one run to compare.")
+    else:
+        st.info("No gauge comparison data found for this basin.")
+
     if selected_subbasin is None:
         st.info("Click a subbasin on the map to view simulated streamflow.")
 
@@ -560,6 +623,55 @@ with tab4:
                     "(NM Interstate Stream Commission) + USGS gage records, "
                     "2000–2020 monthly."
                 )
+
+            st.divider()
+            st.subheader("Observed seasonal pattern vs. the model's best runs")
+            st.caption(
+                "Mean monthly flow at each dam's outlet gauge, observed against one "
+                "selected model run — shows whether the model gets the timing of "
+                "releases right, not just the volume. Normalize to compare shape "
+                "alone, independent of how much water the run passes overall."
+            )
+
+            res_meta_gages = res_meta["flow_gage"].astype(str).str.zfill(8)
+            res_gauge_ids = [g for g in res_meta_gages if not flow_gauges_meta.empty and g in set(flow_gauges_meta["id"])]
+            if res_gauge_ids:
+                res_gauge_labels = dict(zip(res_meta_gages, res_meta["name"]))
+
+                selected_res_gauge = st.selectbox(
+                    "Dam outlet gauge",
+                    options=res_gauge_ids,
+                    format_func=lambda g: res_gauge_labels.get(g, g),
+                )
+                selected_res_run = st.selectbox(
+                    "Run",
+                    options=FLOW_RUN_KEYS,
+                    format_func=lambda r: FLOW_RUN_LABELS.get(r, r),
+                )
+                normalize_shape = st.checkbox("Normalize (divide each curve by its own mean)", value=False)
+
+                shape_stats = compute_gauge_stats(flow_monthly, selected_res_gauge, selected_res_run)
+                if shape_stats is None:
+                    st.info("Fewer than 12 overlapping months at this gauge for this run.")
+                else:
+                    st.plotly_chart(
+                        plot_seasonal_shape(shape_stats, selected_res_run, normalize=normalize_shape),
+                        use_container_width=True,
+                        key="tab_res_shape_chart",
+                    )
+                    c1, c2, c3, c4, c5, c6 = st.columns(6)
+                    c1.metric("NSE", f"{shape_stats['nse']:.2f}")
+                    c2.metric("KGE", f"{shape_stats['kge']:.2f}")
+                    c3.metric("PBIAS", f"{shape_stats['pbias']:.1f}%")
+                    c4.metric("R²", f"{shape_stats['r2']:.2f}")
+                    c5.metric("RMSE", f"{shape_stats['rmse']:.2f} m³/s")
+                    c6.metric("n (months)", shape_stats["n"])
+                    st.caption(
+                        "This is flow at the dam's USGS outlet gauge (2002–2007) — a "
+                        "different record from the release/storage series above."
+                    )
+            else:
+                st.info("No gauge comparison data available for these dams.")
     else:
         st.info("Real reservoir data is only available for the Pecos basin right now.")
 
