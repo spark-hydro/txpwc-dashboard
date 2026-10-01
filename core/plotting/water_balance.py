@@ -52,10 +52,15 @@ def plot_annual_water_balance(wb: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         barmode="relative",
         template="plotly_white",
-        height=680,
+        height=760,
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=20, b=20),
-        legend=dict(orientation="h", yanchor="top", y=-0.08),
+        margin=dict(l=20, r=20, t=20, b=140),
+        legend=dict(
+            orientation="h",
+            yanchor="top", y=-0.13,
+            xanchor="center", x=0.5,
+            font=dict(size=11),
+        ),
     )
     fig.update_xaxes(title_text="Year", row=4, col=1)
     return fig
