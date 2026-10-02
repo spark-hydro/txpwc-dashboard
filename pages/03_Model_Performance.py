@@ -17,9 +17,32 @@ from core.plotting.reservoirs import plot_reservoir_timeseries
 from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
 from core.io.wells_reader import read_wells_meta, read_wells_timeseries
 from core.io.salinity_reader import read_salinity_sites
-from core.io.climate_reader import read_et_basin_monthly, read_et_grid
-from core.plotting.salinity import plot_tds_distribution
-from core.plotting.climate import plot_et_water_balance, plot_et_grid_distribution
+from core.io.climate_reader import read_et_basin_monthly, read_et_grid, read_et_spatial_comparison
+from core.io.gw_calibration_reader import read_gw_calibration_wells, read_gw_calibration_pairs
+from core.io.water_balance_reader import read_water_balance_annual
+from core.io.streamflow_runs_reader import (
+    read_streamflow_gauges_meta,
+    read_streamflow_monthly_obs_sim,
+    RUN_KEYS as FLOW_RUN_KEYS,
+    RUN_LABELS as FLOW_RUN_LABELS,
+)
+from core.io.salinity_simulation_reader import (
+    read_salinity_station_meta,
+    read_salinity_station_observed,
+    read_salinity_station_simulated,
+    read_salinity_source_contrib,
+    read_salinity_reach_export,
+)
+from core.plotting.salinity import plot_tds_distribution, plot_station_obs_vs_sim, plot_source_contribution
+from core.plotting.climate import (
+    plot_et_water_balance,
+    plot_et_grid_distribution,
+    plot_et_spatial_map,
+    compute_et_spatial_stats,
+)
+from core.plotting.gw_calibration import plot_gw_obs_vs_sim_scatter, plot_gw_well_timeseries
+from core.plotting.water_balance import plot_annual_water_balance
+from core.plotting.streamflow_runs import compute_gauge_stats, plot_seasonal_shape, plot_multirun_timeseries
 import plotly.graph_objects as go
 from core.metrics.mobj_adapter import evaluate_metrics
 from core.io.txpwc_reader import read_observed_station_timeseries
@@ -44,8 +67,22 @@ if context.basin_id == "Pecos":
     res_ts = read_reservoirs_monthly(bundle.basin_dir)
     salinity_sites = read_salinity_sites(bundle.basin_dir)
     et_grid = read_et_grid(bundle.basin_dir)
+    et_spatial = read_et_spatial_comparison(bundle.basin_dir)
+    gw_cal_wells = read_gw_calibration_wells(bundle.basin_dir)
+    gw_cal_pairs = read_gw_calibration_pairs(bundle.basin_dir)
+    water_balance = read_water_balance_annual(bundle.basin_dir)
+    flow_gauges_meta = read_streamflow_gauges_meta(bundle.basin_dir)
+    flow_monthly = read_streamflow_monthly_obs_sim(bundle.basin_dir)
+    sal_station_meta = read_salinity_station_meta(bundle.basin_dir)
+    sal_obs = read_salinity_station_observed(bundle.basin_dir)
+    sal_sim = read_salinity_station_simulated(bundle.basin_dir)
+    sal_contrib = read_salinity_source_contrib(bundle.basin_dir)
+    sal_reach_export = read_salinity_reach_export(bundle.basin_dir)
 else:
-    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = pd.DataFrame()
+    wells_meta = wells_ts = res_meta = res_ts = salinity_sites = et_grid = et_spatial = pd.DataFrame()
+    flow_gauges_meta = flow_monthly = pd.DataFrame()
+    gw_cal_wells = gw_cal_pairs = water_balance = pd.DataFrame()
+    sal_station_meta = sal_obs = sal_sim = sal_contrib = sal_reach_export = pd.DataFrame()
 
 
 def _subbasin_streamflow_df(subbasin_id):
@@ -115,17 +152,6 @@ def _subbasin_streamflow_fig(plot_df, subbasin_id, compact=False):
     return fig
 
 
-def _compact_fig(fig):
-    """Shrink an existing figure for the map's small click panel."""
-    fig.update_layout(
-        title="",
-        height=200,
-        showlegend=False,
-        margin=dict(l=10, r=10, t=10, b=10),
-    )
-    return fig
-
-
 st.title("Model Performance")
 st.caption("Initial end-to-end vertical slice: context selection → data load → metrics → plots.")
 st.subheader("Watershed Map")
@@ -166,6 +192,10 @@ if bundle.subbasins_geojson is not None:
         layer_options.append("Salinity sites")
     if not et_grid.empty:
         layer_options.append("ET grid")
+    if not gw_cal_wells.empty:
+        layer_options.append("GW accuracy")
+    if not sal_reach_export.empty:
+        layer_options.append("Salt export (simulated)")
 
     with col_layers:
         show_layers = st.multiselect(
@@ -184,6 +214,8 @@ if bundle.subbasins_geojson is not None:
         reservoirs_meta=res_meta if "Reservoirs" in show_layers else None,
         salinity_sites=salinity_sites if "Salinity sites" in show_layers else None,
         et_grid=et_grid if "ET grid" in show_layers else None,
+        gw_calibration_wells=gw_cal_wells if "GW accuracy" in show_layers else None,
+        salt_reach_export=sal_reach_export if "Salt export (simulated)" in show_layers else None,
     )
 
     map_event = st.plotly_chart(
@@ -207,132 +239,38 @@ if bundle.subbasins_geojson is not None:
             props = features[point_index].get("properties", {})
             subbasin_id = props.get("Subbasin")
             st.session_state["selected_subbasin"] = subbasin_id
-
-            with st.container(border=True):
-                st.markdown(f"**Subbasin {subbasin_id} — simulated streamflow**")
-                sf_plot_df, _ = _subbasin_streamflow_df(subbasin_id)
-                if sf_plot_df.empty:
-                    st.caption("No simulated series available for this subbasin.")
-                else:
-                    st.plotly_chart(
-                        _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=True),
-                        width="stretch",
-                        config={"displayModeBar": False},
-                        key="map_panel_subbasin_compact",
-                    )
-                    with st.expander("See full-size chart & details"):
-                        st.plotly_chart(
-                            _subbasin_streamflow_fig(sf_plot_df, subbasin_id, compact=False),
-                            width="stretch",
-                            key="map_panel_subbasin_full",
-                        )
-                        st.caption("Also on the Streamflow tab below, with sediment/metrics context.")
+            st.caption(f"Selected subbasin {subbasin_id} — see the Streamflow and Sediment Yield tabs below.")
 
         elif layer == "wells" and point_index is not None and 0 <= point_index < len(wells_meta):
             well_row = wells_meta.iloc[point_index]
             st.session_state["selected_well"] = well_row["id"]
-
-            with st.container(border=True):
-                st.markdown(f"**{well_row['label']} — water table depth**")
-                well_series = wells_ts[wells_ts["well_id"] == well_row["id"]]
-                if well_series.empty:
-                    st.caption("No time series available for this well.")
-                else:
-                    st.plotly_chart(
-                        _compact_fig(plot_well_timeseries(well_series, well_row["label"])),
-                        width="stretch",
-                        config={"displayModeBar": False},
-                        key="map_panel_well_compact",
-                    )
-                    with st.expander("See full-size chart & details"):
-                        st.plotly_chart(
-                            plot_well_timeseries(well_series, well_row["label"]),
-                            width="stretch",
-                            key="map_panel_well_full",
-                        )
-                        col_w1, col_w2, col_w3 = st.columns(3)
-                        col_w1.metric("Source", well_row["source"])
-                        col_w2.metric("Readings", int(well_row["n_obs"]))
-                        col_w3.metric("Mean head", f"{well_row['mean_head_m']:.1f} m" if pd.notna(well_row["mean_head_m"]) else "NA")
+            st.caption(f"Selected {well_row['label']} — see the Groundwater tab below.")
 
         elif layer == "reservoirs" and point_index is not None and 0 <= point_index < len(res_meta):
             dam_row = res_meta.iloc[point_index]
             st.session_state["selected_dam"] = dam_row["dam_key"]
-
-            with st.container(border=True):
-                st.markdown(f"**{dam_row['name']} — release & storage**")
-                dam_series = res_ts[res_ts["dam_key"] == dam_row["dam_key"]]
-                if dam_series.empty:
-                    st.caption("No time series available for this dam.")
-                else:
-                    st.plotly_chart(
-                        _compact_fig(plot_reservoir_timeseries(dam_series, dam_row["name"])),
-                        width="stretch",
-                        config={"displayModeBar": False},
-                        key="map_panel_dam_compact",
-                    )
-                    with st.expander("See full-size chart & details"):
-                        st.plotly_chart(
-                            plot_reservoir_timeseries(dam_series, dam_row["name"]),
-                            width="stretch",
-                            key="map_panel_dam_full",
-                        )
+            st.caption(f"Selected {dam_row['name']} — see the Reservoirs tab below.")
 
         elif layer == "salinity" and point_index is not None and 0 <= point_index < len(salinity_plotted):
             site = salinity_plotted.iloc[point_index]
-            with st.container(border=True):
-                st.markdown(f"**{site['desc']}**")
-                st.caption(
-                    "No continuous time series exists per site (grab samples only) -- "
-                    "shown here is where this site's mean TDS falls in the basin-wide distribution."
-                )
-                st.plotly_chart(
-                    plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"], compact=True),
-                    width="stretch",
-                    config={"displayModeBar": False},
-                    key="map_panel_salinity_compact",
-                )
-                with st.expander("See full-size chart & details"):
-                    st.plotly_chart(
-                        plot_tds_distribution(salinity_sites, highlight_tds=site["tds_mean"]),
-                        width="stretch",
-                        key="map_panel_salinity_full",
-                    )
-                    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-                    col_s1.metric("Mean TDS", f"{site['tds_mean']:,.0f} mg/L")
-                    col_s2.metric("Range", f"{site['tds_min']:,.0f}–{site['tds_max']:,.0f}")
-                    col_s3.metric("TDS samples", int(site["n_tds"]))
-                    col_s4.metric("Source", site["source"])
-                    st.caption(
-                        f"Isotope samples: {int(site['n_iso_samples'])} · "
-                        f"Sampled {site['date_oldest']} to {site['date_newest']}"
-                    )
+            st.caption(f"{site['desc']}: mean TDS {site['tds_mean']:,.0f} mg/L — see the Salinity tab below.")
 
         elif layer == "et_grid" and point_index is not None and 0 <= point_index < len(et_grid):
             cell = et_grid.iloc[point_index]
-            with st.container(border=True):
-                st.markdown(f"**Grid cell — {cell['lat']:.3f}, {cell['lon']:.3f}**")
-                st.caption(
-                    "Each cell is a 2000–2020 annual normal (TerraClimate), not a time "
-                    "series -- shown here is where this cell falls basin-wide."
-                )
-                st.plotly_chart(
-                    plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"], compact=True),
-                    width="stretch",
-                    config={"displayModeBar": False},
-                    key="map_panel_et_compact",
-                )
-                with st.expander("See full-size chart & details"):
-                    st.plotly_chart(
-                        plot_et_grid_distribution(et_grid, highlight_aet=cell["aet_mm_yr"]),
-                        width="stretch",
-                        key="map_panel_et_full",
-                    )
-                    st.metric("Actual ET at this cell", f"{cell['aet_mm_yr']:,.0f} mm/yr")
+            st.caption(f"Grid cell {cell['lat']:.3f}, {cell['lon']:.3f}: {cell['aet_mm_yr']:,.0f} mm/yr actual ET — see the Climate (ET) tab below.")
+
+        elif layer == "gw_calibration" and point_index is not None and 0 <= point_index < len(gw_cal_wells):
+            well_row = gw_cal_wells.iloc[point_index]
+            st.session_state["selected_gw_cal_well"] = well_row["id"]
+            st.caption(f"Selected well {well_row['id']} — see the Groundwater tab below.")
+
+        elif layer == "salt_export" and point_index is not None and 0 <= point_index < len(sal_reach_export):
+            reach_row = sal_reach_export.iloc[point_index]
+            st.caption(f"Reach {int(reach_row['u'])}: simulated TDS export {reach_row['tds']:,.0f} kg/yr (26-yr mean).")
 
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
-    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity", "Climate (ET)"]
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+    ["Streamflow", "Flow Duration", "Groundwater", "Reservoirs", "Sediment Yield", "Salinity", "Climate (ET)", "Water Balance"]
 )
 
 with tab1:
@@ -373,6 +311,59 @@ with tab1:
     else:
         st.info("Metrics not available because no observed streamflow is matched to this subbasin.")
 
+    st.divider()
+    st.subheader("Real USGS gauges against the model's best full-period runs")
+    st.caption(
+        "Monthly flow at 10 real USGS gauges across the basin — main-stem, "
+        "reservoir-outlet, and tributary — against the three model runs that "
+        "cover the complete 2000–2025 period. Of the many shorter screening runs "
+        "tried during development, these are the ones run over the full record. "
+        "The comparison itself covers 2002–2007, the common window with cached "
+        "observations across every run."
+    )
+
+    if not flow_gauges_meta.empty:
+        flow_gauge_options = flow_gauges_meta["id"].tolist()
+        flow_gauge_labels = dict(zip(flow_gauges_meta["id"], flow_gauges_meta["label"]))
+        selected_flow_gauge = st.selectbox(
+            "Gauge",
+            options=flow_gauge_options,
+            format_func=lambda g: flow_gauge_labels.get(g, g),
+        )
+        selected_flow_runs = st.multiselect(
+            "Runs",
+            options=FLOW_RUN_KEYS,
+            default=FLOW_RUN_KEYS,
+            format_func=lambda r: FLOW_RUN_LABELS.get(r, r),
+        )
+
+        log_scale = st.checkbox("Log scale (recommended — flow spans orders of magnitude)", value=True)
+
+        if selected_flow_runs:
+            st.plotly_chart(
+                plot_multirun_timeseries(flow_monthly, selected_flow_gauge, selected_flow_runs, log_scale=log_scale),
+                width="stretch",
+                key="tab_flow_multirun_chart",
+            )
+
+            for run_key in selected_flow_runs:
+                run_stats = compute_gauge_stats(flow_monthly, selected_flow_gauge, run_key)
+                st.caption(f"**{FLOW_RUN_LABELS.get(run_key, run_key)}**")
+                if run_stats is None:
+                    st.info("Fewer than 12 overlapping months at this gauge for this run.")
+                    continue
+                c1, c2, c3, c4, c5, c6 = st.columns(6)
+                c1.metric("NSE", f"{run_stats['nse']:.2f}")
+                c2.metric("KGE", f"{run_stats['kge']:.2f}")
+                c3.metric("PBIAS", f"{run_stats['pbias']:.1f}%")
+                c4.metric("R²", f"{run_stats['r2']:.2f}")
+                c5.metric("RMSE", f"{run_stats['rmse']:.2f} m³/s")
+                c6.metric("n (months)", run_stats["n"])
+        else:
+            st.info("Pick at least one run to compare.")
+    else:
+        st.info("No gauge comparison data found for this basin.")
+
     if selected_subbasin is None:
         st.info("Click a subbasin on the map to view simulated streamflow.")
 
@@ -382,10 +373,66 @@ with tab2:
 
 
 with tab3:
-    st.subheader("Real groundwater monitoring wells")
+    st.subheader("Observed against simulated depth to water table")
     st.caption(
-        "60 real USGS NWIS / TWDB observation wells over the Pecos gwflow grid — "
-        "independent of the small demo dataset used elsewhere on this page. "
+        "Every well-year at 51 real USGS/TWDB observation wells: depth to water "
+        "table as reported at the well, against the model's own simulated depth "
+        "in that well's grid cell. Points on the dashed 1:1 line would be a "
+        "perfect match."
+    )
+
+    if context.basin_id == "Pecos" and not gw_cal_pairs.empty:
+        bias = gw_cal_pairs["sim_depth_m"] - gw_cal_pairs["obs_depth_m"]
+        mae = bias.abs().mean()
+        rmse = (bias ** 2).mean() ** 0.5
+        r2 = gw_cal_pairs["obs_depth_m"].corr(gw_cal_pairs["sim_depth_m"]) ** 2
+        within5 = (bias.abs() < 5).mean() * 100
+
+        col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+        col1.metric("Wells", gw_cal_pairs["id"].nunique())
+        col2.metric("Well-years", len(gw_cal_pairs))
+        col3.metric("Bias (sim − obs)", f"{bias.mean():+.1f} m")
+        col4.metric("MAE", f"{mae:.1f} m")
+        col5.metric("RMSE", f"{rmse:.1f} m")
+        col6.metric("R²", f"{r2:.2f}")
+        col7.metric("Within 5 m", f"{within5:.0f}%")
+
+        st.plotly_chart(plot_gw_obs_vs_sim_scatter(gw_cal_pairs), width="stretch", key="tab_gwcal_scatter")
+        st.caption(
+            "Nearly all points sit below the 1:1 line (simulated depth smaller than "
+            "observed): the model's water table sits higher/shallower than the real "
+            "wells. Turn on **GW accuracy** in the Watershed Map above to see it by "
+            "location, or pick a well below for its own record through time."
+        )
+
+        gwcal_options = sorted(gw_cal_wells["id"].tolist())
+        current_gwcal = st.session_state.get("selected_gw_cal_well", gwcal_options[0])
+        if current_gwcal not in gwcal_options:
+            current_gwcal = gwcal_options[0]
+
+        selected_gwcal = st.selectbox("Well", options=gwcal_options, index=gwcal_options.index(current_gwcal))
+        st.session_state["selected_gw_cal_well"] = selected_gwcal
+
+        well_pairs = gw_cal_pairs[gw_cal_pairs["id"] == selected_gwcal].sort_values("year")
+        st.plotly_chart(
+            plot_gw_well_timeseries(well_pairs, selected_gwcal),
+            width="stretch",
+            key="tab_gwcal_well_chart",
+        )
+        st.caption(
+            "Caveats: a well is a point and the model cell averages several km²; the "
+            "model has one soil/aquifer layer, so deep or confined wells cannot match. "
+            "Well-years beyond 130 m depth to water (either observed or simulated) "
+            "are excluded as not comparable at this resolution."
+        )
+    else:
+        st.info("No observed-vs-simulated well data found for this basin.")
+
+    st.divider()
+    st.subheader("Other real groundwater monitoring wells")
+    st.caption(
+        "60 more real USGS NWIS / TWDB observation wells over the Pecos gwflow grid — "
+        "observed head only, no simulated comparison yet. "
         "Turn on **Groundwater wells** in the Watershed Map above and click one, "
         "or just pick one from the list below."
     )
@@ -474,6 +521,55 @@ with tab4:
                     "(NM Interstate Stream Commission) + USGS gage records, "
                     "2000–2020 monthly."
                 )
+
+            st.divider()
+            st.subheader("Observed seasonal pattern vs. the model's best runs")
+            st.caption(
+                "Mean monthly flow at each dam's outlet gauge, observed against one "
+                "selected model run — shows whether the model gets the timing of "
+                "releases right, not just the volume. Normalize to compare shape "
+                "alone, independent of how much water the run passes overall."
+            )
+
+            res_meta_gages = res_meta["flow_gage"].astype(str).str.zfill(8)
+            res_gauge_ids = [g for g in res_meta_gages if not flow_gauges_meta.empty and g in set(flow_gauges_meta["id"])]
+            if res_gauge_ids:
+                res_gauge_labels = dict(zip(res_meta_gages, res_meta["name"]))
+
+                selected_res_gauge = st.selectbox(
+                    "Dam outlet gauge",
+                    options=res_gauge_ids,
+                    format_func=lambda g: res_gauge_labels.get(g, g),
+                )
+                selected_res_run = st.selectbox(
+                    "Run",
+                    options=FLOW_RUN_KEYS,
+                    format_func=lambda r: FLOW_RUN_LABELS.get(r, r),
+                )
+                normalize_shape = st.checkbox("Normalize (divide each curve by its own mean)", value=False)
+
+                shape_stats = compute_gauge_stats(flow_monthly, selected_res_gauge, selected_res_run)
+                if shape_stats is None:
+                    st.info("Fewer than 12 overlapping months at this gauge for this run.")
+                else:
+                    st.plotly_chart(
+                        plot_seasonal_shape(shape_stats, selected_res_run, normalize=normalize_shape),
+                        width="stretch",
+                        key="tab_res_shape_chart",
+                    )
+                    c1, c2, c3, c4, c5, c6 = st.columns(6)
+                    c1.metric("NSE", f"{shape_stats['nse']:.2f}")
+                    c2.metric("KGE", f"{shape_stats['kge']:.2f}")
+                    c3.metric("PBIAS", f"{shape_stats['pbias']:.1f}%")
+                    c4.metric("R²", f"{shape_stats['r2']:.2f}")
+                    c5.metric("RMSE", f"{shape_stats['rmse']:.2f} m³/s")
+                    c6.metric("n (months)", shape_stats["n"])
+                    st.caption(
+                        "This is flow at the dam's USGS outlet gauge (2002–2007) — a "
+                        "different record from the release/storage series above."
+                    )
+            else:
+                st.info("No gauge comparison data available for these dams.")
     else:
         st.info("Real reservoir data is only available for the Pecos basin right now.")
 
@@ -596,13 +692,12 @@ with tab6:
     st.caption(
         "4,283 real water-quality sampling sites inside the Pecos watershed "
         "(USGS, NMED, TCEQ), compiled in the Houston et al. (2019) USGS Pecos "
-        "River Basin Salinity Assessment. SWAT+gwflow does not yet include a "
-        "salinity-transport module, so this is an **observed-data inventory**, "
-        "not an observed-vs-simulated comparison — that will follow once the "
-        "module is added and calibrated (see the [Hydrology](/Hydrology) roadmap). "
-        "For a conceptual, interactive treatment of salinity transport in the "
-        "meantime, see the [Salinity Lab](/Water_Quality). Turn on **Salinity "
-        "sites** in the Watershed Map above to see them plotted."
+        "River Basin Salinity Assessment. Most of this is an **observed-data "
+        "inventory** — the model's salinity routing only has simulated output "
+        "at a handful of gauges so far (below). For a conceptual, interactive "
+        "treatment of salinity transport in the meantime, see the "
+        "[Salinity Lab](/Water_Quality). Turn on **Salinity sites** in the "
+        "Watershed Map above to see them plotted."
     )
 
     if context.basin_id == "Pecos":
@@ -635,6 +730,65 @@ with tab6:
             )
     else:
         st.info("Real salinity site data is only available for the Pecos basin right now.")
+
+    st.divider()
+    st.subheader("Real salinity observed against simulated")
+    st.caption(
+        "Real Water Quality Portal grab samples against the model's own annual "
+        "flux-weighted concentration, at the 6 USGS gauges where the model's "
+        "channel salt routing has simulated output. Pick a gauge and a "
+        "constituent; hover a point for its date/value."
+    )
+
+    if context.basin_id == "Pecos" and not sal_station_meta.empty:
+        sal_station_options = sal_station_meta["site"].tolist()
+        sal_station_labels = dict(zip(sal_station_meta["site"], sal_station_meta["station"]))
+
+        col_sal1, col_sal2 = st.columns(2)
+        with col_sal1:
+            selected_sal_site = st.selectbox(
+                "Station",
+                options=sal_station_options,
+                format_func=lambda s: sal_station_labels.get(s, s),
+            )
+        with col_sal2:
+            selected_constituent = st.selectbox(
+                "Constituent",
+                options=["cl", "so4", "tds"],
+                format_func=lambda c: {"cl": "Chloride", "so4": "Sulfate", "tds": "TDS"}[c],
+            )
+
+        st.plotly_chart(
+            plot_station_obs_vs_sim(sal_obs, sal_sim, selected_sal_site, selected_constituent),
+            width="stretch",
+            key="tab_salinity_obs_sim_chart",
+        )
+
+        overlap_years = sal_sim[(sal_sim["site"] == selected_sal_site) & (sal_sim["constituent"] == selected_constituent)]["year"].nunique()
+        station_row = sal_station_meta[sal_station_meta["site"] == selected_sal_site].iloc[0]
+        n_obs = int(station_row[f"n_{selected_constituent}"])
+        st.caption(
+            f"{sal_station_labels.get(selected_sal_site, selected_sal_site)}: {n_obs:,} observed samples "
+            f"(site {selected_sal_site}), full period of record. Simulated: {overlap_years} years "
+            "(v52_prod, annual flux-weighted)."
+        )
+
+    st.divider()
+    st.subheader("Where the salt comes from")
+    st.caption(
+        "Mean annual chloride load, simulated: groundwater export to streams "
+        "against the basin's two mapped point sources. Chloride and sulfate "
+        "follow the same pathway in this model (same initial-condition bands)."
+    )
+
+    if context.basin_id == "Pecos" and not sal_contrib.empty:
+        contrib_row = sal_contrib.iloc[0].to_dict()
+        st.plotly_chart(plot_source_contribution(contrib_row), width="stretch", key="tab_salinity_contrib_chart")
+        gw_share = contrib_row["groundwater_t_yr"] / sum(contrib_row.values()) * 100
+        st.caption(
+            f"Groundwater accounts for ~{gw_share:.0f}% of mapped chloride export in this "
+            "model — roughly 7× the two point sources combined."
+        )
 
 
 with tab7:
@@ -680,9 +834,74 @@ with tab7:
                 "above to see it mapped, and click a cell for its exact value."
             )
             st.plotly_chart(plot_et_grid_distribution(et_grid), width="stretch", key="tab_et_grid_hist")
+
+        if not et_spatial.empty:
+            st.divider()
+            st.subheader("Model vs. remote-sensing ET, 2010–2019")
+            st.caption(
+                "The model's own ET (HRU + groundwater ET, run v33) against a real "
+                "remote-sensing product, at 1,148 0.1° grid cells. Green means the "
+                "model evaporates more than the product, brown means less."
+            )
+            product_choice = st.radio(
+                "Compare against",
+                options=["ssebop_et_mm", "terraclimate_et_mm"],
+                format_func=lambda c: "SSEBop (MODIS, energy balance)" if c == "ssebop_et_mm" else "TerraClimate",
+                horizontal=True,
+            )
+            product_label = "SSEBop" if product_choice == "ssebop_et_mm" else "TerraClimate"
+
+            et_spatial_diff = et_spatial.assign(diff_mm=et_spatial["model_et_mm"] - et_spatial[product_choice])
+            shared_cmax = max(et_spatial["model_et_mm"].max(), et_spatial[product_choice].max())
+
+            col_m, col_p, col_d = st.columns(3)
+            with col_m:
+                st.plotly_chart(
+                    plot_et_spatial_map(et_spatial, "model_et_mm", "Model ET", shared_cmax=shared_cmax),
+                    width="stretch", key="tab_et_spatial_model",
+                )
+            with col_p:
+                st.plotly_chart(
+                    plot_et_spatial_map(et_spatial, product_choice, f"{product_label} ET", shared_cmax=shared_cmax),
+                    width="stretch", key="tab_et_spatial_product",
+                )
+            with col_d:
+                st.plotly_chart(
+                    plot_et_spatial_map(et_spatial_diff, "diff_mm", "Model − product", diverging=True),
+                    width="stretch", key="tab_et_spatial_diff",
+                )
+
+            spatial_stats = compute_et_spatial_stats(et_spatial["model_et_mm"], et_spatial[product_choice])
+            if spatial_stats:
+                c3, c4, c5 = st.columns(3)
+                c3.metric("PBIAS", f"{spatial_stats['pbias']:.1f}%")
+                c4.metric("R²", f"{spatial_stats['r2']:.2f}")
+                c5.metric("RMSE", f"{spatial_stats['rmse']:.1f} mm")
+                st.caption(f"n = {spatial_stats['n']:,} grid cells. Spatial pairs, not a time series.")
     else:
         st.info("Real basin climate data is only available for the Pecos basin right now.")
 
+
+with tab8:
+    st.subheader("Annual water balance (SWAT+gwflow model, 2000–2025)")
+    st.caption(
+        "Where the model sends water each year, at the whole-basin scale: "
+        "precipitation in, soil water, the surface/lateral/groundwater flow that "
+        "reaches the stream network, the exchange between the stream and the "
+        "aquifer, and a relative groundwater storage trend. This is the model's "
+        "own simulated balance, not an observed record."
+    )
+
+    if context.basin_id == "Pecos" and not water_balance.empty:
+        st.plotly_chart(plot_annual_water_balance(water_balance), width="stretch", key="tab_wb_chart")
+        st.caption(
+            "Groundwater discharge to the stream (dark blue, panel 3) is larger and "
+            "steadier than recharge or seepage in the opposite direction in almost "
+            "every year: the aquifer is a consistent net source of baseflow to the "
+            "channel network over the full 26-year record, not a sink."
+        )
+    else:
+        st.info("No water balance record found for this basin.")
 
 
 st.subheader("Summary table")

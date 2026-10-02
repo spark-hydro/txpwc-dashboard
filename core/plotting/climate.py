@@ -1,7 +1,63 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+
+
+def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False, shared_cmax: float | None = None) -> go.Figure:
+    """One 0.1-deg ET grid as colored points: model, a product, or their difference.
+
+    Pass ``shared_cmax`` (the max of both the model and the product) so the
+    two non-diverging maps share one color scale -- otherwise each map
+    scales to its own max and a visually "deeper green" cell can actually
+    be the lower value.
+    """
+    fig = go.Figure()
+    vals = df[column]
+
+    if diverging:
+        bound = max(abs(vals.min()), abs(vals.max()), 1)
+        colorscale, cmin, cmax = "RdYlGn", -bound, bound
+    else:
+        colorscale, cmin, cmax = "YlGn", 0, shared_cmax if shared_cmax is not None else vals.max()
+
+    fig.add_trace(
+        go.Scattermapbox(
+            lat=df["lat"], lon=df["lon"],
+            mode="markers",
+            marker=dict(size=9, color=vals, colorscale=colorscale, cmin=cmin, cmax=cmax, showscale=True,
+                        colorbar=dict(title="mm/yr")),
+            text=[f"{title}: {v:,.0f} mm/yr" for v in vals],
+            hovertemplate="%{text}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        mapbox_style="open-street-map",
+        mapbox_center={"lat": df["lat"].mean(), "lon": df["lon"].mean()},
+        mapbox_zoom=4.85,
+        margin=dict(l=0, r=0, t=30, b=0),
+        height=380,
+        title=title,
+    )
+    return fig
+
+
+def compute_et_spatial_stats(model: pd.Series, product: pd.Series) -> dict | None:
+    """Spatial goodness-of-fit: every grid cell pair is one sample (not a time series)."""
+    pairs = pd.DataFrame({"m": model, "p": product}).dropna()
+    if len(pairs) < 5:
+        return None
+    m, p = pairs["m"].to_numpy(dtype=float), pairs["p"].to_numpy(dtype=float)
+    mp = p.mean()
+    nse = 1 - np.sum((m - p) ** 2) / np.sum((p - mp) ** 2)
+    pbias = 100 * (m.sum() - p.sum()) / p.sum()
+    r = np.corrcoef(m, p)[0, 1]
+    r2 = r ** 2
+    rmse = np.sqrt(np.mean((m - p) ** 2))
+    alpha, beta = m.std() / p.std(), m.mean() / p.mean()
+    kge = 1 - np.sqrt((r - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2)
+    return {"nse": nse, "kge": kge, "pbias": pbias, "r2": r2, "rmse": rmse, "n": len(pairs)}
 
 
 def plot_et_grid_distribution(

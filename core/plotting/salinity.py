@@ -63,3 +63,66 @@ def plot_tds_distribution(
         )
 
     return fig
+
+
+CONSTITUENT_LABELS = {"cl": "Chloride", "so4": "Sulfate", "tds": "TDS"}
+
+
+def plot_station_obs_vs_sim(
+    observed: pd.DataFrame,
+    simulated: pd.DataFrame,
+    site: str,
+    constituent: str,
+) -> go.Figure:
+    """Real grab samples (points) against the model's annual flux-weighted
+    concentration (line) at one real USGS gauge, log-y."""
+    obs = observed[(observed["site"] == site) & (observed["constituent"] == constituent)].sort_values("date")
+    sim = simulated[(simulated["site"] == site) & (simulated["constituent"] == constituent)].sort_values("year")
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=obs["date"], y=obs["value_mgL"],
+            mode="markers", name="Observed (Water Quality Portal)",
+            marker=dict(size=6, color="#c0392b", opacity=0.75),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=pd.to_datetime(sim["year"], format="%Y"), y=sim["value_mgL"],
+            mode="markers", name="Simulated (annual flux-weighted)",
+            marker=dict(size=7, color="#0e7490", symbol="diamond"),
+        )
+    )
+
+    fig.update_layout(
+        yaxis=dict(title=f"{CONSTITUENT_LABELS.get(constituent, constituent)} (mg/L, log scale)", type="log"),
+        template="plotly_white",
+        margin=dict(l=20, r=20, t=20, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
+
+
+def plot_source_contribution(contrib: dict) -> go.Figure:
+    """Annual chloride load, groundwater export vs. the two mapped point sources."""
+    labels = ["Groundwater (gwflow export)", "Malaga Bend brine (point source)", "Produced water (point source)"]
+    values = [contrib["groundwater_t_yr"], contrib["malaga_t_yr"], contrib["prodwater_t_yr"]]
+    colors = ["#0e7490", "#c0392b", "#b8862b"]
+
+    fig = go.Figure(
+        go.Bar(
+            x=values, y=labels, orientation="h",
+            marker_color=colors,
+            text=[f"{v:,.0f} t/yr" for v in values],
+            textposition="outside",
+        )
+    )
+    fig.update_layout(
+        xaxis=dict(title="Mean annual chloride load (t/yr, log scale)", type="log"),
+        template="plotly_white",
+        margin=dict(l=20, r=20, t=20, b=20),
+        showlegend=False,
+        height=260,
+    )
+    return fig

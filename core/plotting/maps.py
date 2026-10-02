@@ -186,6 +186,8 @@ def plot_watershed_overview(
     reservoirs_meta: pd.DataFrame | None = None,
     salinity_sites: pd.DataFrame | None = None,
     et_grid: pd.DataFrame | None = None,
+    gw_calibration_wells: pd.DataFrame | None = None,
+    salt_reach_export: pd.DataFrame | None = None,
 ) -> tuple[go.Figure, list[str], pd.DataFrame]:
     """One shared watershed map with optional, toggleable real-data overlays.
 
@@ -288,6 +290,60 @@ def plot_watershed_overview(
             )
         )
         layer_order.append("et_grid")
+
+    if gw_calibration_wells is not None and not gw_calibration_wells.empty:
+        bias = gw_calibration_wells["mean_bias_m"]
+        sizes = 6 + np.minimum(10, bias.abs() / 5)
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=gw_calibration_wells["lat"],
+                lon=gw_calibration_wells["lon"],
+                mode="markers",
+                marker=dict(
+                    size=sizes,
+                    color=bias,
+                    colorscale="RdBu",
+                    cmin=-60, cmax=60,
+                    showscale=True,
+                    colorbar=dict(title="Sim − obs (m)", x=1.45),
+                ),
+                text=[
+                    f"{wid}<br>Mean bias (sim − obs): {b:+.1f} m<br>"
+                    f"Observed: {o:.0f} m, Simulated: {s:.0f} m ({n} yr)"
+                    for wid, b, o, s, n in zip(
+                        gw_calibration_wells["id"], bias,
+                        gw_calibration_wells["mean_obs_m"], gw_calibration_wells["mean_sim_m"],
+                        gw_calibration_wells["n_years"],
+                    )
+                ],
+                hovertemplate="%{text}<extra></extra>",
+                name="GW accuracy",
+            )
+        )
+        layer_order.append("gw_calibration")
+
+    if salt_reach_export is not None and not salt_reach_export.empty:
+        tds = salt_reach_export["tds"].clip(lower=1)
+        log_tds = np.log10(tds)
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=salt_reach_export["lat"],
+                lon=salt_reach_export["lon"],
+                mode="markers",
+                marker=dict(
+                    size=5,
+                    color=log_tds,
+                    colorscale="Reds",
+                    cmin=0, cmax=log_tds.max(),
+                    showscale=True,
+                    colorbar=dict(title="TDS export (kg/yr)", x=1.60),
+                ),
+                text=[f"TDS export: {v:,.0f} kg/yr" for v in salt_reach_export["tds"]],
+                hovertemplate="%{text}<extra></extra>",
+                name="Salt export (simulated)",
+            )
+        )
+        layer_order.append("salt_export")
 
     fig.update_layout(
         showlegend=True,
