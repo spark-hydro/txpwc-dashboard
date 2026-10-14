@@ -295,7 +295,7 @@ def plot_watershed_overview(
         bias = gw_calibration_wells["mean_bias_m"]
         sizes = 6 + np.minimum(10, bias.abs() / 5)
         fig.add_trace(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=gw_calibration_wells["lat"],
                 lon=gw_calibration_wells["lon"],
                 mode="markers",
@@ -326,7 +326,7 @@ def plot_watershed_overview(
         tds = salt_reach_export["tds"].clip(lower=1)
         log_tds = np.log10(tds)
         fig.add_trace(
-            go.Scattermapbox(
+            go.Scattermap(
                 lat=salt_reach_export["lat"],
                 lon=salt_reach_export["lon"],
                 mode="markers",
