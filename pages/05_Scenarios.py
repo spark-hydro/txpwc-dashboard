@@ -132,7 +132,7 @@ else:
 
 # ── Interactive reservoir-release lab (Pecos only) ─────────────────────────────
 RESERVOIR_LABS = {
-    "Pecos": "https://josephauresy.github.io/pecos-reservoirs/",
+    "Pecos": "https://dauresy.github.io/pecos-reservoirs/",
 }
 
 reservoir_lab_url = RESERVOIR_LABS.get(context.basin_id)
