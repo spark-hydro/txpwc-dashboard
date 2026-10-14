@@ -15,9 +15,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
-LAB_URL = "https://josephauresy.github.io/pecos-salinity-lab/"
-RESERVOIR_LAB_URL = "https://josephauresy.github.io/pecos-reservoirs/"
-PRECAL_URL = "https://josephauresy.github.io/pre_calibration_pecos/"
+LAB_URL = "https://dauresy.github.io/pecos-salinity-lab/"
+RESERVOIR_LAB_URL = "https://dauresy.github.io/pecos-reservoirs/"
+PRECAL_URL = "https://dauresy.github.io/pre_calibration_pecos/"
 REPO_URL = "https://github.com/spark-hydro/txpwc-dashboard"
 
 ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"

@@ -493,7 +493,7 @@ def run_app():
             The standalone version of this tool works for **any basin worldwide**:
 
             🚀 [**Open the app**](https://noaa-station-selector.streamlit.app/) — upload your shapefile and export SWAT+ files in minutes
-            &nbsp;&nbsp;&nbsp;&nbsp;📦 [Source code & docs](https://github.com/JosephAuresy/noaa-swat-station-selector)
+            &nbsp;&nbsp;&nbsp;&nbsp;📦 [Source code & docs](https://github.com/dauresy/noaa-swat-station-selector)
             """,
             """
             ---
@@ -501,7 +501,7 @@ def run_app():
             La versión standalone de esta herramienta funciona para **cualquier cuenca del mundo**:
 
             🚀 [**Abrir la app**](https://noaa-station-selector.streamlit.app/) — sube tu shapefile y exporta archivos SWAT+ en minutos
-            &nbsp;&nbsp;&nbsp;&nbsp;📦 [Código fuente y documentación](https://github.com/JosephAuresy/noaa-swat-station-selector)
+            &nbsp;&nbsp;&nbsp;&nbsp;📦 [Código fuente y documentación](https://github.com/dauresy/noaa-swat-station-selector)
             """
         ))
 
