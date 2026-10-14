@@ -23,7 +23,7 @@ def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bo
         colorscale, cmin, cmax = "YlGn", 0, shared_cmax if shared_cmax is not None else vals.max()
 
     fig.add_trace(
-        go.Scattermapbox(
+        go.Scattermap(
             lat=df["lat"], lon=df["lon"],
             mode="markers",
             marker=dict(size=9, color=vals, colorscale=colorscale, cmin=cmin, cmax=cmax, showscale=True,
@@ -33,9 +33,9 @@ def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bo
         )
     )
     fig.update_layout(
-        mapbox_style="open-street-map",
-        mapbox_center={"lat": df["lat"].mean(), "lon": df["lon"].mean()},
-        mapbox_zoom=4.85,
+        map_style="open-street-map",
+        map_center={"lat": df["lat"].mean(), "lon": df["lon"].mean()},
+        map_zoom=4.85,
         margin=dict(l=0, r=0, t=30, b=0),
         height=380,
         title=title,
