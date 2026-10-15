@@ -18,9 +18,8 @@ st.set_page_config(
     layout="wide",
 )
 
-# The kiosk splash is the app's front door: "/" shows it, and the QR codes /
-# links on it lead to "/?app=1", which opens the dashboard for the rest of the
-# session. "/?kiosk=1" forces the splash back up for the next visitor.
+# The kiosk splash is parked: "/" opens the dashboard directly, and
+# "/?kiosk=1" brings the splash back for a poster session.
 if should_show_kiosk():
     render_kiosk()
     st.stop()

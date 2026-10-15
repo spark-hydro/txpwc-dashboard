@@ -95,24 +95,15 @@ def _load_base64_image(path_str: str) -> str:
 
 
 def should_show_kiosk() -> bool:
-    """The kiosk is the front door; entering the dashboard is explicit and sticky.
+    """The kiosk is parked for now: the dashboard opens directly.
 
-    - ``/``            -> kiosk (first visit of a browser session)
-    - ``/?app=1``      -> dashboard, and remembered for the rest of the session, so
-                          the sidebar's "Home" link doesn't bounce back to the splash
-    - ``/?kiosk=1``    -> force the kiosk back up (presenter resetting the display)
+    - ``/``            -> dashboard
+    - ``/?kiosk=1``    -> the kiosk splash (for the next poster session)
+
+    To make the kiosk the front door again, restore the session-sticky logic:
+    show it on a first visit unless ``?app=1`` was seen.
     """
-    params = st.query_params
-
-    if params.get("kiosk") is not None:
-        st.session_state["entered_app"] = False
-        return True
-
-    if params.get("app") is not None:
-        st.session_state["entered_app"] = True
-        return False
-
-    return not st.session_state.get("entered_app", False)
+    return st.query_params.get("kiosk") is not None
 
 
 def render_kiosk() -> None:

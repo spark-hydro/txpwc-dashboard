@@ -86,14 +86,9 @@ These selections dynamically update all analysis pages.
 
 ### Model Performance
 
-- Comparison of observed vs simulated data  
-- Performance metrics (e.g., NSE, RMSE)  
-- Spatial visualization by subbasin  
-
-### Hydrology
-
-- Historical streamflow and climate data  
-- Hydrologic trends and variability  
+- Click a streamflow station, dam, well, or salinity site on the map to see observed vs. simulated results  
+- Evapotranspiration: model vs. remote-sensing products, in maps and monthly series  
+- Hydrologic responses: the basin water balance and groundwater–surface water exchange  
 
 ### Water Quality
 
