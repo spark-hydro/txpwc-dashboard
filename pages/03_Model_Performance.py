@@ -12,7 +12,7 @@ bundle = load_performance_bundle(context)
 st.title("Model Performance")
 st.caption("How the simulations compare with real observations, and what the model says about the basin's water.")
 
-OBSERVATIONS = "Streamflow · Groundwater · Reservoirs · Salinity"
+OBSERVATIONS = "Observations"
 ET = "ET"
 HYDROLOGY = "Hydrologic responses"
 
