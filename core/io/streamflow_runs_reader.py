@@ -24,7 +24,7 @@ import streamlit as st
 
 from core.io.filesystem import read_csv
 
-RUN_KEYS = ["v30ext", "v33", "v52prod"]
+RUN_KEYS = ["v52prod", "v33", "v30ext"]
 RUN_LABELS = {
     "v30ext": "Base run (2000–2025)",
     "v33": "Improved channel geometry (2000–2025)",

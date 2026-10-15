@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from core.plotting.style import obs_marker, sim_color
+
 
 def plot_tds_distribution(
     sites: pd.DataFrame,
@@ -84,14 +86,14 @@ def plot_station_obs_vs_sim(
         go.Scatter(
             x=obs["date"], y=obs["value_mgL"],
             mode="markers", name="Observed (Water Quality Portal)",
-            marker=dict(size=6, color="#c0392b", opacity=0.75),
+            marker=obs_marker(7),
         )
     )
     fig.add_trace(
         go.Scatter(
             x=pd.to_datetime(sim["year"], format="%Y"), y=sim["value_mgL"],
             mode="markers", name="Simulated (annual flux-weighted)",
-            marker=dict(size=7, color="#0e7490", symbol="diamond"),
+            marker=dict(size=8, color=sim_color(0), symbol="diamond"),
         )
     )
 

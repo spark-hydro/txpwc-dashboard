@@ -142,3 +142,60 @@ def plot_et_water_balance(df: pd.DataFrame) -> go.Figure:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
+
+
+def plot_et_region_monthly(monthly: pd.DataFrame, start_year: int = 2010) -> go.Figure:
+    """Monthly regional ET from the two remote-sensing products (observed style)."""
+    from core.plotting.style import obs_marker
+
+    sub = monthly[monthly["date"].dt.year >= start_year].sort_values("date")
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=sub["date"], y=sub["ssebop_aet_mm"], mode="markers", name="SSEBop",
+            marker=obs_marker(6),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=sub["date"], y=sub["terraclimate_aet_mm"], mode="markers", name="TerraClimate",
+            marker=obs_marker(6, symbol="diamond"),
+        )
+    )
+    fig.update_layout(
+        yaxis_title="Actual ET (mm/month)",
+        template="plotly_white",
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=20, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig
+
+
+def plot_et_region_annual(annual: pd.DataFrame, start_year: int = 2010) -> go.Figure:
+    """Annual regional ET: both products (observed style) against the model runs."""
+    from core.plotting.style import obs_marker, sim_color
+
+    sub = annual[annual["year"] >= start_year].sort_values("year")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=sub["year"], y=sub["ssebop_mm"], mode="markers", name="SSEBop", marker=obs_marker(9)))
+    fig.add_trace(go.Scatter(x=sub["year"], y=sub["terraclimate_mm"], mode="markers", name="TerraClimate",
+                             marker=obs_marker(9, symbol="diamond")))
+    runs = [
+        ("model_v52prod_mm", "Model — production run"),
+        ("model_v33_mm", "Model — improved channel geometry"),
+        ("model_v30ext_mm", "Model — base run"),
+    ]
+    for i, (col, label) in enumerate(runs):
+        if col in sub.columns and sub[col].notna().any():
+            fig.add_trace(go.Scatter(x=sub["year"], y=sub[col], mode="lines+markers", name=label,
+                                     line=dict(color=sim_color(i), width=2), marker=dict(size=5)))
+    fig.update_layout(
+        yaxis_title="Actual ET (mm/yr)",
+        xaxis=dict(dtick=2),
+        template="plotly_white",
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=20, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig

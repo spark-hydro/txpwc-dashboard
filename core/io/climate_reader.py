@@ -50,3 +50,34 @@ def read_et_spatial_comparison(basin_dir: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame(columns=["lat", "lon", "model_et_mm", "ssebop_et_mm", "terraclimate_et_mm"])
     return read_csv(path)
+
+
+@st.cache_data
+def read_et_regions(basin_dir: Path) -> pd.DataFrame:
+    """Sub-regions (whole basin, foothills, irrigated bands, ...) with display labels."""
+    path = basin_dir / "et_regions.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["region", "label"])
+    return read_csv(path)
+
+
+@st.cache_data
+def read_et_region_monthly(basin_dir: Path) -> pd.DataFrame:
+    """Monthly regional ET (mm/month) from the two remote-sensing products,
+    TerraClimate (2000-2025) and SSEBop (2003-2025). The model's own monthly
+    ET is not available yet -- see read_et_region_annual for its annual totals."""
+    path = basin_dir / "et_region_monthly.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["region", "month", "terraclimate_aet_mm", "ssebop_aet_mm"])
+    df = read_csv(path)
+    df["date"] = pd.to_datetime(df["month"], format="%Y-%m")
+    return df
+
+
+@st.cache_data
+def read_et_region_annual(basin_dir: Path) -> pd.DataFrame:
+    """Annual regional ET (mm/yr): both products and three model runs."""
+    path = basin_dir / "et_region_annual.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["region", "year"])
+    return read_csv(path)

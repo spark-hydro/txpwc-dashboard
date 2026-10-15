@@ -1,0 +1,13 @@
+region,label
+basin,Whole basin
+foothills,Sacramento foothills
+roswell,Roswell / PVACD irrigated band
+carlsbad,Carlsbad / CID
+redbluff,Red Bluff / TX irrigation
+pecostx,Pecos TX desert
+upper,Upper Santa Rosa-Sumner
+above_brantley,Basin above Brantley (lat > 32.55)
+irrigated,"Cropland HRUs in the Roswell, Carlsbad and Red Bluff boxes"
+roswell_crop,Roswell / PVACD cropland HRUs
+carlsbad_crop,Carlsbad / CID cropland HRUs
+redbluff_crop,Red Bluff cropland HRUs

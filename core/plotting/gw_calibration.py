@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from core.plotting.style import obs_marker, sim_color
+
 
 def plot_gw_obs_vs_sim_scatter(pairs: pd.DataFrame) -> go.Figure:
     """Observed against simulated depth to water table, every well-year."""
@@ -53,15 +55,15 @@ def plot_gw_well_timeseries(well_pairs: pd.DataFrame, well_label: str) -> go.Fig
         go.Scatter(
             x=well_pairs["year"], y=well_pairs["obs_depth_m"],
             mode="markers", name="Observed",
-            marker=dict(size=8, color="#111827"),
+            marker=obs_marker(9),
         )
     )
     fig.add_trace(
         go.Scatter(
             x=well_pairs["year"], y=well_pairs["sim_depth_m"],
             mode="lines+markers", name="Simulated",
-            line=dict(color="#0e7490", width=2),
-            marker=dict(size=5),
+            line=dict(color=sim_color(0), width=2),
+            marker=dict(size=5, color=sim_color(0)),
         )
     )
 
