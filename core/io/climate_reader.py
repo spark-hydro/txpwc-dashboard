@@ -54,9 +54,9 @@ def read_et_spatial_comparison(basin_dir: Path) -> pd.DataFrame:
 
 @st.cache_data
 def read_et_spatial_by_year(basin_dir: Path) -> pd.DataFrame:
-    """The same 1,148 0.1-deg cells, one row per cell and year (2010-2025): the
+    """The same 1,148 0.1-deg cells, one row per cell and year (2010-2024): the
     model's ET (HRU + groundwater, runs v52prod and v33) and the two products,
-    annual mm/yr. SSEBop 2025 is left blank (the source values look anomalous)."""
+    annual mm/yr."""
     path = basin_dir / "et_spatial_by_year.csv"
     if not path.exists():
         return pd.DataFrame(columns=["year", "lat", "lon", "model_v52prod_mm", "model_v33_mm", "ssebop_et_mm", "terraclimate_et_mm"])

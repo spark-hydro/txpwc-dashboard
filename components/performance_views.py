@@ -297,7 +297,7 @@ def render_et_view(bundle, context) -> None:
         spatial = spatial.rename(columns={"model_v52prod_mm": "model_et_mm"}).dropna(subset=["model_et_mm"])
         st.caption(
             "The model's own ET (HRU + groundwater ET, production run) against a remote-sensing product at "
-            "0.1° grid cells. Drag the year to step through 2010–2025; colors keep one scale across years. "
+            "0.1° grid cells. Drag the year to step through 2010–2024; colors keep one scale across years. "
             "In the difference map, green means the model evaporates more."
         )
 
