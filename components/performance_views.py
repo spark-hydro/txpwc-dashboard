@@ -47,7 +47,7 @@ from core.plotting.climate import (
 )
 from core.plotting.duration_curves import plot_fdc
 from core.plotting.gw_calibration import plot_gw_well_timeseries
-from core.plotting.observation_map import plot_observation_map
+from core.plotting.observation_map import expected_layer_order, plot_observation_map
 from core.plotting.salinity import (
     CONSTITUENT_LABELS,
     plot_source_contribution,
@@ -184,7 +184,7 @@ def render_observation_view(bundle, context) -> None:
     ) if numeric else None
     enabled = {key for name, key in LAYERS if name in shown}
 
-    expected_order = ["subbasins", "highlight"] + [key for _, key in LAYERS if key in enabled] + ["subbasin_outline"]
+    expected_order = expected_layer_order(enabled)
     map_state = st.session_state.get("perf_map") or {}
     points = (map_state.get("selection") or {}).get("points", []) if hasattr(map_state, "get") else []
     _handle_map_click(points, expected_order, layers)

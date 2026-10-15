@@ -79,7 +79,14 @@ def _get_map_center_and_zoom(subbasins_geojson: dict):
     return center, zoom
 
 
-def plot_subbasins_map(subbasins_geojson: dict, color_field: str | None = None):
+def plot_subbasins_map(
+    subbasins_geojson: dict,
+    color_field: str | None = None,
+    colorscale="Turbo",
+    opacity: float = 0.40,
+    line_color: str | None = None,
+    colorbar: dict | None = None,
+):
     features = subbasins_geojson.get("features", [])
 
     locations = []
@@ -114,13 +121,12 @@ def plot_subbasins_map(subbasins_geojson: dict, color_field: str | None = None):
             z=z_values,
             customdata=locations,
             featureidkey="properties.Subbasin",
-            colorscale="Turbo",  # more contrast for hydrologic variables
-            marker_opacity=0.40,
+            colorscale=colorscale,
+            marker_opacity=opacity,
             marker_line_width=0.8,
+            marker_line_color=line_color,
             showscale=True if color_field is not None else False,
-            colorbar=dict(
-                title=color_field if color_field else "",
-            ),
+            colorbar=dict(title=color_field if color_field else "", **(colorbar or {})),
             text=hover_text,
             hovertemplate="%{text}<extra></extra>",
         )

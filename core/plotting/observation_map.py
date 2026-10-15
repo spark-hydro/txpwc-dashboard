@@ -4,6 +4,10 @@ Each layer is one named trace, so the legend hides/shows it instantly and a
 click can be routed back to its dataset by trace position (see layer_order).
 A "highlight" trace sits under the points and rings whatever is currently
 selected, so the map always shows which point the charts below are drawing.
+
+Every point layer is drawn twice -- a white halo, then the coloured dot -- so
+the points stay readable over any subbasin colour. The map basemap has no
+icon sprites, so categories are told apart by colour and size, not by shape.
 """
 
 from __future__ import annotations
@@ -14,10 +18,27 @@ import plotly.graph_objects as go
 
 from core.plotting.maps import plot_subbasins_map
 
-STREAMFLOW_COLOR = "#0369a1"
-EXTRA_STREAMFLOW_COLOR = "#38bdf8"
-RESERVOIR_COLOR = "#f59e0b"
-SALINITY_COLOR = "#b45309"
+STREAMFLOW_COLOR = "#1d4ed8"
+EXTRA_STREAMFLOW_COLOR = "#60a5fa"
+RESERVOIR_COLOR = "#ea580c"
+SALINITY_COLOR = "#7e22ce"
+HALO_COLOR = "#ffffff"
+
+# Pale terrain tones: the subbasins read as a backdrop, not as data competing
+# with the points drawn on top of them.
+SUBBASIN_COLORSCALE = [[0.0, "#f7f4ec"], [0.5, "#e2d9c3"], [1.0, "#b9a982"]]
+
+POINT_LAYERS = ["streamflow", "reservoirs", "wells", "salinity"]
+
+
+def expected_layer_order(enabled: set[str]) -> list[str]:
+    """Trace order the map is built with, so a click's curve number can be
+    checked against it before the figure exists."""
+    order = ["subbasins", "highlight"]
+    for key in POINT_LAYERS:
+        if key in enabled:
+            order += [f"{key}_halo", key]
+    return order + ["subbasin_outline"]
 
 
 def _highlight_trace(points: list[tuple[float, float]]) -> go.Scattermap:
@@ -25,8 +46,16 @@ def _highlight_trace(points: list[tuple[float, float]]) -> go.Scattermap:
     lon = [p[1] for p in points]
     return go.Scattermap(
         lat=lat, lon=lon, mode="markers",
-        marker=dict(size=26, color="#111827", opacity=0.30),
+        marker=dict(size=30, color="#111827", opacity=0.30),
         hoverinfo="skip", showlegend=False, name="selected",
+    )
+
+
+def _halo(lat, lon, size) -> go.Scattermap:
+    return go.Scattermap(
+        lat=lat, lon=lon, mode="markers",
+        marker=dict(size=size, color=HALO_COLOR, opacity=0.95),
+        hoverinfo="skip", showlegend=False, name="halo",
     )
 
 
@@ -44,7 +73,11 @@ def plot_observation_map(
     selected_subbasin: int | None = None,
 ) -> tuple[go.Figure, list[str]]:
     """Returns (fig, layer_order); layer_order[i] names the layer of trace i."""
-    fig = plot_subbasins_map(subbasins_geojson, color_field=color_field)
+    fig = plot_subbasins_map(
+        subbasins_geojson, color_field=color_field,
+        colorscale=SUBBASIN_COLORSCALE, opacity=0.75, line_color="#8b8578",
+        colorbar=dict(thickness=10, len=0.4, y=0.78, x=1.02, yanchor="middle"),
+    )
     layer_order = ["subbasins"]
 
     ring: list[tuple[float, float]] = []
@@ -66,31 +99,39 @@ def plot_observation_map(
 
     if gauges is not None and not gauges.empty:
         extra = gauges["group"].eq("extra") if "group" in gauges else pd.Series(False, index=gauges.index)
+        size = np.where(extra, 9, 14)
+        fig.add_trace(_halo(gauges["lat"], gauges["lon"], size + 5))
+        layer_order.append("streamflow_halo")
         fig.add_trace(go.Scattermap(
             lat=gauges["lat"], lon=gauges["lon"], mode="markers",
-            marker=dict(size=np.where(extra, 8, 12), color=np.where(extra, EXTRA_STREAMFLOW_COLOR, STREAMFLOW_COLOR)),
+            marker=dict(size=size, color=np.where(extra, EXTRA_STREAMFLOW_COLOR, STREAMFLOW_COLOR)),
             text=[f"{lbl}<br>USGS {i}" for lbl, i in zip(gauges["label"], gauges["id"])],
             hovertemplate="%{text}<extra></extra>", name="Streamflow stations",
         ))
         layer_order.append("streamflow")
 
     if reservoirs is not None and not reservoirs.empty:
+        fig.add_trace(_halo(reservoirs["lat"], reservoirs["lon"], 27))
+        layer_order.append("reservoirs_halo")
         fig.add_trace(go.Scattermap(
             lat=reservoirs["lat"], lon=reservoirs["lon"], mode="markers+text",
-            marker=dict(size=17, color=RESERVOIR_COLOR),
-            text=reservoirs["name"], textposition="top center", textfont=dict(size=11),
+            marker=dict(size=21, color=RESERVOIR_COLOR),
+            text=reservoirs["name"], textposition="top center", textfont=dict(size=11, color="#7c2d12"),
             hovertemplate="%{text}<extra></extra>", name="Reservoirs",
         ))
         layer_order.append("reservoirs")
 
     if wells is not None and not wells.empty:
         bias = wells["mean_bias_m"]
+        size = 7 + np.minimum(9, bias.abs() / 5)
+        fig.add_trace(_halo(wells["lat"], wells["lon"], size + 4))
+        layer_order.append("wells_halo")
         fig.add_trace(go.Scattermap(
             lat=wells["lat"], lon=wells["lon"], mode="markers",
             marker=dict(
-                size=6 + np.minimum(10, bias.abs() / 5), color=bias, colorscale="RdBu",
+                size=size, color=bias, colorscale="RdBu",
                 cmin=-60, cmax=60, showscale=True,
-                colorbar=dict(title="Sim − obs (m)", x=1.15),
+                colorbar=dict(title="Well bias<br>sim − obs (m)", thickness=10, len=0.4, x=1.02, y=0.28, yanchor="middle"),
             ),
             text=[
                 f"Well {i}<br>Mean bias (sim − obs): {b:+.1f} m<br>{n} well-years"
@@ -101,9 +142,11 @@ def plot_observation_map(
         layer_order.append("wells")
 
     if salinity_stations is not None and not salinity_stations.empty:
+        fig.add_trace(_halo(salinity_stations["lat"], salinity_stations["lon"], 20))
+        layer_order.append("salinity_halo")
         fig.add_trace(go.Scattermap(
             lat=salinity_stations["lat"], lon=salinity_stations["lon"], mode="markers",
-            marker=dict(size=13, color=SALINITY_COLOR),
+            marker=dict(size=15, color=SALINITY_COLOR),
             text=[f"{s}<br>USGS {i}" for s, i in zip(salinity_stations["station"], salinity_stations["site"])],
             hovertemplate="%{text}<extra></extra>", name="Salinity stations",
         ))
@@ -122,9 +165,11 @@ def plot_observation_map(
     ))
     layer_order.append("subbasin_outline")
 
+    zoom = fig.layout.map.zoom
     fig.update_layout(
-        height=560,
+        map_zoom=(zoom + 0.8) if zoom else zoom,
+        height=600,
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, itemsizing="constant"),
     )
     return fig, layer_order
