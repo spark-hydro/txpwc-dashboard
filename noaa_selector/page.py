@@ -390,7 +390,7 @@ def run_app():
         m_ov = folium.Map(
             location=[centroid_ov.y, centroid_ov.x],
             zoom_start=7,
-            tiles="CartoDB positron",
+            tiles="OpenStreetMap",
         )
 
         # Subbasins
@@ -839,7 +839,7 @@ def run_app():
         m_sel = folium.Map(
             location=[centroid.y, centroid.x],
             zoom_start=7,
-            tiles="CartoDB positron",
+            tiles="OpenStreetMap",
         )
 
         # Subbasins layer (gray polygons)
