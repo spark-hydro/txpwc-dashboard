@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 from core.plotting.maps import plot_subbasins_map
 
 STREAMFLOW_COLOR = "#0369a1"
+EXTRA_STREAMFLOW_COLOR = "#38bdf8"
 RESERVOIR_COLOR = "#f59e0b"
 SALINITY_COLOR = "#b45309"
 
@@ -40,6 +41,7 @@ def plot_observation_map(
     selected_gauge: str | None = None,
     selected_well: str | None = None,
     selected_salinity: str | None = None,
+    selected_subbasin: int | None = None,
 ) -> tuple[go.Figure, list[str]]:
     """Returns (fig, layer_order); layer_order[i] names the layer of trace i."""
     fig = plot_subbasins_map(subbasins_geojson, color_field=color_field)
@@ -63,9 +65,10 @@ def plot_observation_map(
     layer_order.append("highlight")
 
     if gauges is not None and not gauges.empty:
+        extra = gauges["group"].eq("extra") if "group" in gauges else pd.Series(False, index=gauges.index)
         fig.add_trace(go.Scattermap(
             lat=gauges["lat"], lon=gauges["lon"], mode="markers",
-            marker=dict(size=12, color=STREAMFLOW_COLOR),
+            marker=dict(size=np.where(extra, 8, 12), color=np.where(extra, EXTRA_STREAMFLOW_COLOR, STREAMFLOW_COLOR)),
             text=[f"{lbl}<br>USGS {i}" for lbl, i in zip(gauges["label"], gauges["id"])],
             hovertemplate="%{text}<extra></extra>", name="Streamflow stations",
         ))
@@ -105,6 +108,19 @@ def plot_observation_map(
             hovertemplate="%{text}<extra></extra>", name="Salinity stations",
         ))
         layer_order.append("salinity")
+
+    # Outline of the picked subbasin. Always the last trace (empty when nothing is
+    # picked) so the trace order -- and with it click routing -- never changes.
+    chosen = [f for f in subbasins_geojson.get("features", []) if f["properties"].get("Subbasin") == selected_subbasin]
+    fig.add_trace(go.Choroplethmap(
+        geojson={"type": "FeatureCollection", "features": chosen},
+        locations=[selected_subbasin] if chosen else [], z=[1] if chosen else [],
+        featureidkey="properties.Subbasin",
+        colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]], showscale=False,
+        marker=dict(line=dict(color="#111827", width=3)),
+        hoverinfo="skip", showlegend=False, name="selected subbasin",
+    ))
+    layer_order.append("subbasin_outline")
 
     fig.update_layout(
         height=560,

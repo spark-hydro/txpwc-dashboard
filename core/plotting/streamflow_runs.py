@@ -77,8 +77,12 @@ def plot_seasonal_shape(stats: dict, run_key: str, normalize: bool = False) -> g
     return fig
 
 
-def plot_multirun_timeseries(monthly: pd.DataFrame, gauge_id: str, run_keys: list[str], log_scale: bool = True) -> go.Figure:
-    """Observed monthly flow against several runs, 2002-2007."""
+def plot_multirun_timeseries(
+    monthly: pd.DataFrame, gauge_id: str, run_keys: list[str], log_scale: bool = True,
+    subbasin_flow: pd.DataFrame | None = None, subbasin_id: int | None = None,
+) -> go.Figure:
+    """Observed monthly flow against several runs, 2002-2007. When a subbasin is
+    picked, its simulated outlet flow is added as dotted lines (one per run)."""
     sub = monthly[monthly["gauge_id"] == gauge_id].sort_values("month")
     fig = go.Figure()
 
@@ -93,6 +97,18 @@ def plot_multirun_timeseries(monthly: pd.DataFrame, gauge_id: str, run_keys: lis
         y = sub[col].clip(lower=0.01) if log_scale else sub[col]
         fig.add_trace(go.Scatter(x=sub["month"], y=y, mode="lines+markers", name=RUN_LABELS.get(run_key, run_key),
                                   line=dict(color=RUN_COLORS.get(run_key, "#888"), width=1.6), marker=dict(size=3)))
+
+    if subbasin_flow is not None and subbasin_id is not None:
+        sb = subbasin_flow[subbasin_flow["subbasin"] == subbasin_id].sort_values("month")
+        for run_key in run_keys:
+            col = f"sim_{run_key}_m3s"
+            if col not in sb.columns:
+                continue
+            y = sb[col].clip(lower=0.01) if log_scale else sb[col]
+            fig.add_trace(go.Scatter(
+                x=sb["month"], y=y, mode="lines", name=f"Subbasin {subbasin_id} outlet — {RUN_LABELS.get(run_key, run_key)}",
+                line=dict(color=RUN_COLORS.get(run_key, "#888"), width=2, dash="dot"),
+            ))
 
     fig.update_layout(
         yaxis=dict(title="m³/s (log)" if log_scale else "m³/s", type="log" if log_scale else "linear"),

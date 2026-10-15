@@ -32,8 +32,9 @@ from core.io.salinity_simulation_reader import (
 from core.io.streamflow_runs_reader import (
     RUN_KEYS,
     RUN_LABELS,
-    read_streamflow_gauges_meta,
-    read_streamflow_monthly_obs_sim,
+    read_model_subbasins,
+    read_streamflow_stations_all,
+    read_subbasin_outlet_flow,
 )
 from core.io.water_balance_reader import read_water_balance_annual
 from core.plotting.climate import (
@@ -107,7 +108,11 @@ def _handle_map_click(points, layer_order, layers):
     layer = layer_order[curve] if curve is not None and curve < len(layer_order) else None
     if idx is None or layer is None:
         return
-    if layer == "streamflow":
+    if layer == "subbasins":
+        ids = layers["subbasin_ids"]
+        if idx < len(ids):
+            ss["sel_subbasin"] = ids[idx]
+    elif layer == "streamflow":
         ss["sel_gauge"] = layers["gauges"].iloc[idx]["id"]
     elif layer == "reservoirs":
         gauge = layers["reservoirs"].iloc[idx]["flow_gage_id"]
@@ -144,13 +149,13 @@ def _metrics_table(flow_monthly, gauge_id, run_keys) -> pd.DataFrame:
 # view 1: observations on one map
 # --------------------------------------------------------------------------
 def render_observation_view(bundle, context) -> None:
-    if context.basin_id != "Pecos" or bundle.subbasins_geojson is None:
+    basin_dir = bundle.basin_dir
+    subbasins = read_model_subbasins(basin_dir) if context.basin_id == "Pecos" else None
+    if subbasins is None:
         st.info("Observation points are only available for the Pecos basin right now.")
         return
-
-    basin_dir = bundle.basin_dir
-    gauges = read_streamflow_gauges_meta(basin_dir)
-    flow_monthly = read_streamflow_monthly_obs_sim(basin_dir)
+    subbasin_flow = read_subbasin_outlet_flow(basin_dir)
+    gauges, flow_monthly = read_streamflow_stations_all(basin_dir)
     res_meta = read_reservoirs_meta(basin_dir)
     res_meta = res_meta.assign(flow_gage_id=res_meta["flow_gage"].astype(str).str.zfill(8))
     wells = read_gw_calibration_wells(basin_dir)
@@ -159,15 +164,19 @@ def render_observation_view(bundle, context) -> None:
     sal_obs = read_salinity_station_observed(basin_dir)
     sal_sim = read_salinity_station_simulated(basin_dir)
 
-    layers = {"gauges": gauges, "reservoirs": res_meta, "wells": wells, "salinity": sal_meta}
+    subbasin_ids = [f["properties"]["Subbasin"] for f in subbasins["features"] if f["properties"].get("Subbasin") is not None]
+    layers = {"gauges": gauges, "reservoirs": res_meta, "wells": wells, "salinity": sal_meta, "subbasin_ids": subbasin_ids}
     ss = st.session_state
     ss.setdefault("sel_gauge", DEFAULT_GAUGE if DEFAULT_GAUGE in set(gauges["id"]) else gauges["id"].iloc[0])
     ss.setdefault("sel_well", wells["id"].iloc[0])
     ss.setdefault("sel_salinity", DEFAULT_SALINITY_SITE if DEFAULT_SALINITY_SITE in set(sal_meta["site"]) else sal_meta["site"].iloc[0])
 
     # --- map controls
-    features = bundle.subbasins_geojson.get("features", [])
-    numeric = [k for k, v in (features[0].get("properties", {}) if features else {}).items() if isinstance(v, (int, float))]
+    features = subbasins.get("features", [])
+    numeric = [
+        k for k, v in (features[0].get("properties", {}) if features else {}).items()
+        if isinstance(v, (int, float)) and k not in ("Subbasin", "outlet_channel")
+    ]
     col_layers, col_color = st.columns([3, 1])
     shown = col_layers.multiselect("Map layers", options=[n for n, _ in LAYERS], default=[n for n, _ in LAYERS])
     color_var = col_color.selectbox(
@@ -175,24 +184,27 @@ def render_observation_view(bundle, context) -> None:
     ) if numeric else None
     enabled = {key for name, key in LAYERS if name in shown}
 
-    expected_order = ["subbasins", "highlight"] + [key for _, key in LAYERS if key in enabled]
+    expected_order = ["subbasins", "highlight"] + [key for _, key in LAYERS if key in enabled] + ["subbasin_outline"]
     map_state = st.session_state.get("perf_map") or {}
     points = (map_state.get("selection") or {}).get("points", []) if hasattr(map_state, "get") else []
     _handle_map_click(points, expected_order, layers)
 
     fig, layer_order = plot_observation_map(
-        bundle.subbasins_geojson, color_var,
+        subbasins, color_var,
         gauges=gauges if "streamflow" in enabled else None,
         reservoirs=res_meta if "reservoirs" in enabled else None,
         wells=wells if "wells" in enabled else None,
         salinity_stations=sal_meta if "salinity" in enabled else None,
         selected_gauge=ss["sel_gauge"], selected_well=ss["sel_well"], selected_salinity=ss["sel_salinity"],
+        selected_subbasin=ss.get("sel_subbasin"),
     )
     st.plotly_chart(
         fig, width="stretch", on_select="rerun", selection_mode="points",
         config={"scrollZoom": True}, key="perf_map",
     )
-    st.caption("Click a point to chart it below — the highlighted ring marks what each chart is showing.")
+    st.caption(
+        "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing."
+    )
 
     # --- chart 1: streamflow + reservoir outlets
     st.divider()
@@ -207,12 +219,31 @@ def render_observation_view(bundle, context) -> None:
     )
     run_keys = c2.multiselect("Simulations", options=RUN_KEYS, default=RUN_KEYS, format_func=lambda r: RUN_LABELS.get(r, r))
     log_scale = st.checkbox("Log scale (flow spans orders of magnitude)", value=True)
+    sb_options = [None, *subbasin_ids]
+    sb_current = ss.get("sel_subbasin")
+    sb_pick = st.selectbox(
+        "Subbasin outlet (simulated)", options=sb_options,
+        index=sb_options.index(sb_current) if sb_current in sb_options else 0,
+        format_func=lambda i: "None — click a subbasin on the map" if i is None else f"Subbasin {i}",
+    )
+    ss["sel_subbasin"] = sb_pick
+    picked = gauges[gauges["id"] == gauge_id].iloc[0]
+    if picked.get("group") == "extra":
+        window = (
+            "Monthly means of the daily USGS record, 2000–2025, against the model channel closest to the station "
+            f"({picked['snap_m']:,.0f} m away, draining about {picked['drain_km2']:,.0f} km²). Where the station sits "
+            "on a small tributary, or just below a dam, the model channel can differ from what the gauge sees."
+        )
+    else:
+        window = "The comparison window is 2002–2007."
     st.caption(
         f"**{gauge_labels.get(gauge_id, gauge_id)}** — USGS {gauge_id}. Observed monthly flow (hollow red) "
-        "against the model runs that cover the full 2000–2025 period; the comparison window is 2002–2007."
+        f"against the model runs that cover the full 2000–2025 period. {window}"
+        + (" Dotted lines: the model's flow at the outlet of the selected subbasin (no observations exist there)." if sb_pick is not None else "")
     )
     st.plotly_chart(
-        plot_multirun_timeseries(flow_monthly, gauge_id, run_keys, log_scale=log_scale),
+        plot_multirun_timeseries(flow_monthly, gauge_id, run_keys, log_scale=log_scale,
+                                 subbasin_flow=subbasin_flow, subbasin_id=sb_pick),
         width="stretch", key="perf_flow_chart",
     )
     table = _metrics_table(flow_monthly, gauge_id, run_keys)
