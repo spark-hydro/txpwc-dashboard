@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False, shared_cmax: float | None = None) -> go.Figure:
+def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False, shared_cmax: float | None = None, diverging_bound: float | None = None) -> go.Figure:
     """One 0.1-deg ET grid as colored points: model, a product, or their difference.
 
     Pass ``shared_cmax`` (the max of both the model and the product) so the
@@ -17,7 +17,7 @@ def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bo
     vals = df[column]
 
     if diverging:
-        bound = max(abs(vals.min()), abs(vals.max()), 1)
+        bound = diverging_bound if diverging_bound is not None else max(abs(vals.min()), abs(vals.max()), 1)
         colorscale, cmin, cmax = "RdYlGn", -bound, bound
     else:
         colorscale, cmin, cmax = "YlGn", 0, shared_cmax if shared_cmax is not None else vals.max()

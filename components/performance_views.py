@@ -18,7 +18,7 @@ from core.io.climate_reader import (
     read_et_region_annual,
     read_et_region_monthly,
     read_et_regions,
-    read_et_spatial_comparison,
+    read_et_spatial_by_year,
 )
 from core.io.gw_calibration_reader import read_gw_calibration_pairs, read_gw_calibration_wells
 from core.io.reservoir_reader import read_reservoirs_meta
@@ -273,25 +273,44 @@ def render_et_view(bundle, context) -> None:
         return
 
     basin_dir = bundle.basin_dir
-    spatial = read_et_spatial_comparison(basin_dir)
+    by_year = read_et_spatial_by_year(basin_dir)
 
-    if not spatial.empty:
-        st.caption(
-            "The model's own ET (HRU + groundwater ET, run v33) against a remote-sensing product at 1,148 "
-            "0.1° grid cells, 2010–2019. In the difference map, green means the model evaporates more."
-        )
+    if not by_year.empty:
+        MEAN = "2010–2019 mean"
+        years = sorted(by_year["year"].unique().tolist())
         product = st.radio(
             "Compare against", options=["ssebop_et_mm", "terraclimate_et_mm"], horizontal=True,
             format_func=lambda c: "SSEBop (MODIS, energy balance)" if c == "ssebop_et_mm" else "TerraClimate",
         )
         label = "SSEBop" if product == "ssebop_et_mm" else "TerraClimate"
+        pick = st.select_slider("Year", options=[MEAN, *years], value=MEAN, key="et_map_year")
+
+        if pick == MEAN:
+            spatial = (
+                by_year[by_year["year"].between(2010, 2019)]
+                .groupby(["lat", "lon"], as_index=False)[["model_v52prod_mm", product]].mean()
+            )
+            when = "2010–2019 mean"
+        else:
+            spatial = by_year[by_year["year"] == pick][["lat", "lon", "model_v52prod_mm", product]]
+            when = str(pick)
+        spatial = spatial.rename(columns={"model_v52prod_mm": "model_et_mm"}).dropna(subset=["model_et_mm"])
+        st.caption(
+            "The model's own ET (HRU + groundwater ET, production run) against a remote-sensing product at "
+            "0.1° grid cells. Drag the year to step through 2010–2025; colors keep one scale across years. "
+            "In the difference map, green means the model evaporates more."
+        )
+
+        if spatial[product].notna().sum() == 0:
+            st.info(f"{label} has no usable values for {when}; the model map is shown on its own.")
         diff = spatial.assign(diff_mm=spatial["model_et_mm"] - spatial[product])
-        cmax = max(spatial["model_et_mm"].max(), spatial[product].max())
+        cmax = float(by_year[["model_v52prod_mm", "ssebop_et_mm", "terraclimate_et_mm"]].max().max())
+        dbound = float((by_year["model_v52prod_mm"] - by_year[product]).abs().max())
 
         col_m, col_p, col_d = st.columns(3)
-        col_m.plotly_chart(plot_et_spatial_map(spatial, "model_et_mm", "Model ET", shared_cmax=cmax), width="stretch", key="et_map_model")
-        col_p.plotly_chart(plot_et_spatial_map(spatial, product, f"{label} ET", shared_cmax=cmax), width="stretch", key="et_map_product")
-        col_d.plotly_chart(plot_et_spatial_map(diff, "diff_mm", "Model − product", diverging=True), width="stretch", key="et_map_diff")
+        col_m.plotly_chart(plot_et_spatial_map(spatial, "model_et_mm", f"Model ET — {when}", shared_cmax=cmax), width="stretch", key="et_map_model")
+        col_p.plotly_chart(plot_et_spatial_map(spatial.dropna(subset=[product]) if spatial[product].notna().any() else spatial, product, f"{label} ET — {when}", shared_cmax=cmax), width="stretch", key="et_map_product")
+        col_d.plotly_chart(plot_et_spatial_map(diff.dropna(subset=["diff_mm"]) if diff["diff_mm"].notna().any() else diff, "diff_mm", f"Model − {label} — {when}", diverging=True, diverging_bound=dbound), width="stretch", key="et_map_diff")
 
         stats = compute_et_spatial_stats(spatial["model_et_mm"], spatial[product])
         if stats:
@@ -299,7 +318,7 @@ def render_et_view(bundle, context) -> None:
             a.metric("PBIAS", f"{stats['pbias']:.1f}%")
             b.metric("R²", f"{stats['r2']:.2f}")
             c.metric("RMSE", f"{stats['rmse']:.1f} mm")
-            st.caption(f"n = {stats['n']:,} grid cells — spatial pairs, not a time series.")
+            st.caption(f"{when}: n = {stats['n']:,} grid cells — spatial pairs, not a time series.")
 
     regions = read_et_regions(basin_dir)
     monthly = read_et_region_monthly(basin_dir)
