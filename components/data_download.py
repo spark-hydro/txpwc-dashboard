@@ -37,6 +37,18 @@ def _csv_bytes(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8")
 
 
+@st.cache_data(show_spinner=False, max_entries=8)
+def _zip_bytes(key: tuple, _files: dict) -> bytes:
+    """ZIP of the selected CSVs. `key` identifies the selection (the tables themselves are
+    not hashed), so a rerun with the same selection reuses the bytes instead of rebuilding them."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, df in _files.items():
+            zf.writestr(name, _csv_bytes(df))
+    return buf.getvalue()
+
+
+@st.fragment
 def render_download_panel(
     families: list[Family], basin: str = "Pecos", map_selection: dict[str, list[str]] | None = None,
 ) -> None:
@@ -65,6 +77,7 @@ def render_download_panel(
         narrow = st.checkbox("Choose individual points", value=False, key="dl_narrow")
 
         files: dict[str, pd.DataFrame] = {}
+        selection: list[tuple] = []
         n_points = 0
         for fam in families:
             if fam.key not in picked_keys or (use_map and fam.key not in map_selection):
@@ -84,6 +97,7 @@ def render_download_panel(
             if not chosen:
                 continue
             n_points += len(chosen)
+            selection.append((fam.key, tuple(chosen)))
             if content in ("Locations", "Both"):
                 files[f"{basin}_{fam.key}_locations.csv"] = loc[loc[fam.loc_id].astype(str).isin(chosen)]
             if content in ("Time series", "Both"):
@@ -100,11 +114,8 @@ def render_download_panel(
             (name, df), = files.items()
             st.download_button("Download CSV", _csv_bytes(df), file_name=name, mime="text/csv", key="dl_button_csv")
         else:
-            buf = io.BytesIO()
-            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-                for name, df in files.items():
-                    zf.writestr(name, _csv_bytes(df))
+            key = (basin, content, tuple(selection))
             st.download_button(
-                "Download ZIP", buf.getvalue(), file_name=f"{basin}_selected_data.zip", mime="application/zip",
+                "Download ZIP", _zip_bytes(key, files), file_name=f"{basin}_selected_data.zip", mime="application/zip",
                 key="dl_button_zip",
             )

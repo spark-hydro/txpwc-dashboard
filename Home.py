@@ -1,5 +1,7 @@
 import streamlit as st
 
+import threading
+
 from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
@@ -8,6 +10,29 @@ from core.utils.kiosk import render_kiosk, should_show_kiosk
 from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
 from pathlib import Path
 import re
+
+
+@st.cache_resource
+def _warm_up_in_background() -> bool:
+    """Import the heavy plotting modules and build one small map figure in a background thread,
+    once per server, so the first visit to Model Performance doesn't pay that cost."""
+    def work():
+        try:
+            import plotly.graph_objects as go
+
+            import components.performance_views  # noqa: F401
+            go.Figure([
+                go.Scattermap(lat=[0.0], lon=[0.0], mode="markers", marker=dict(size=5, color=[1], colorscale="RdBu")),
+                go.Choroplethmap(geojson={"type": "FeatureCollection", "features": []}, locations=[], z=[]),
+            ]).to_json()
+        except Exception:
+            pass
+
+    threading.Thread(target=work, daemon=True).start()
+    return True
+
+
+_warm_up_in_background()
 
 # -----------------------------
 # Page config (global layout)
