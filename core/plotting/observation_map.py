@@ -166,8 +166,24 @@ def plot_observation_map(
     layer_order.append("subbasin_outline")
 
     zoom = fig.layout.map.zoom
+    lats, lons = [], []
+
+    def _collect(coords):
+        if isinstance(coords[0], (int, float)):
+            lons.append(coords[0])
+            lats.append(coords[1])
+        else:
+            for c in coords:
+                _collect(c)
+
+    for feature in subbasins_geojson.get("features", []):
+        _collect(feature["geometry"]["coordinates"])
+    if lats:
+        # centre on the basin's bounding box (the default is the mean of the vertices,
+        # which sits off-centre for an elongated basin)
+        fig.update_layout(map_center={"lat": (min(lats) + max(lats)) / 2, "lon": (min(lons) + max(lons)) / 2})
     fig.update_layout(
-        map_zoom=(zoom + 0.8) if zoom else zoom,
+        map_zoom=(zoom + 0.3) if zoom else zoom,
         height=520,
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, itemsizing="constant"),
