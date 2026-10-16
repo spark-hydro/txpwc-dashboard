@@ -207,3 +207,112 @@ def plot_et_region_annual(annual: pd.DataFrame, start_year: int = 2010) -> go.Fi
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
+
+
+def plot_et_animation(
+    lat: np.ndarray,
+    lon: np.ndarray,
+    labels: list[str],
+    model: list[np.ndarray],
+    product: list[np.ndarray],
+    product_label: str,
+    unit: str,
+    slider_ticks: list[str] | None = None,
+) -> go.Figure:
+    """Model ET, a product's ET and their difference as three synchronized maps
+    animated through every time step.
+
+    All frames travel to the browser once, so stepping or playing only swaps the
+    point colours client-side -- nothing is re-sent or re-drawn by the server. One
+    slider and one Play/Pause control drive the three maps together, and each frame
+    also carries its own titles and spatial skill metrics.
+    """
+    from plotly.subplots import make_subplots
+
+    diff = [m - p for m, p in zip(model, product)]
+    cmax = float(max(np.nanmax(a) for a in model + product))
+    dbound = float(max(np.nanmax(np.abs(d)) for d in diff))
+    lat, lon = np.asarray(lat), np.asarray(lon)
+
+    def as_ints(a: np.ndarray) -> list:
+        return [None if not np.isfinite(v) else int(round(v)) for v in a]
+
+    def annotations(i: int) -> list[dict]:
+        stats = compute_et_spatial_stats(pd.Series(model[i]), pd.Series(product[i]))
+        skill = (
+            f"PBIAS {stats['pbias']:.1f}%   ·   R² {stats['r2']:.2f}   ·   RMSE {stats['rmse']:.1f} mm   ·   n = {stats['n']:,} cells"
+            if stats else ""
+        )
+        titles = [f"Model ET — {labels[i]}", f"{product_label} ET — {labels[i]}", f"Model − {product_label} — {labels[i]}"]
+        out = [
+            dict(text=t, x=x, y=1.0, xref="paper", yref="paper", xanchor="center", yanchor="bottom", showarrow=False,
+                 font=dict(size=14))
+            for t, x in zip(titles, (0.165, 0.5, 0.835))
+        ]
+        out.append(dict(text=skill, x=0.5, y=-0.30, xref="paper", yref="paper", xanchor="center", yanchor="top",
+                        showarrow=False, font=dict(size=13, color="#374151")))
+        return out
+
+    fig = make_subplots(rows=1, cols=3, specs=[[{"type": "map"}] * 3], horizontal_spacing=0.01)
+    specs = [
+        (model[0], "YlGn", 0, cmax, "Model: %{marker.color:,.0f} " + unit, "ModelBar"),
+        (product[0], "YlGn", 0, cmax, product_label + ": %{marker.color:,.0f} " + unit, "ProdBar"),
+        (diff[0], "RdYlGn", -dbound, dbound, "Model − " + product_label + ": %{marker.color:+,.0f} " + unit, "DiffBar"),
+    ]
+    for k, (vals, scale, lo, hi, hover, _) in enumerate(specs):
+        fig.add_trace(
+            go.Scattermap(
+                lat=lat, lon=lon, mode="markers",
+                marker=dict(
+                    size=9, color=as_ints(vals), colorscale=scale, cmin=lo, cmax=hi, showscale=True,
+                    colorbar=dict(orientation="h", thickness=9, len=0.3, x=(0.165, 0.5, 0.835)[k], y=-0.08,
+                                  title=dict(text=unit, side="right")),
+                ),
+                hovertemplate=hover + "<extra></extra>",
+            ),
+            row=1, col=k + 1,
+        )
+
+    frames = [
+        go.Frame(
+            name=labels[i], traces=[0, 1, 2],
+            data=[go.Scattermap(marker=dict(color=as_ints(a[i]))) for a in (model, product, diff)],
+            layout=dict(annotations=annotations(i)),
+        )
+        for i in range(len(labels))
+    ]
+    fig.frames = frames
+
+    def play_args(ms: int) -> list:
+        return [None, dict(frame=dict(duration=ms, redraw=True), fromcurrent=True, transition=dict(duration=0), mode="immediate")]
+
+    ticks = slider_ticks or labels
+    center = {"lat": float(lat.mean()), "lon": float(lon.mean())}
+    fig.update_layout(
+        annotations=annotations(0),
+        height=600,
+        margin=dict(l=0, r=0, t=40, b=170),
+        updatemenus=[dict(
+            type="buttons", direction="left", x=0.0, y=-0.17, xanchor="left", yanchor="top", showactive=False,
+            buttons=[
+                dict(label="▶ Play", method="animate", args=play_args(700)),
+                dict(label="▶ Slow", method="animate", args=play_args(1500)),
+                dict(label="▶▶ Fast", method="animate", args=play_args(250)),
+                dict(label="⏸ Pause", method="animate",
+                     args=[[None], dict(frame=dict(duration=0, redraw=False), mode="immediate", transition=dict(duration=0))]),
+            ],
+        )],
+        sliders=[dict(
+            active=0, x=0.30, y=-0.15, len=0.70, xanchor="left", yanchor="top",
+            currentvalue=dict(visible=False), pad=dict(t=0, b=0), ticklen=0, minorticklen=0,
+            font=dict(size=11, color="#6b7280"),
+            steps=[
+                dict(method="animate", label=ticks[i],
+                     args=[[labels[i]], dict(mode="immediate", frame=dict(duration=0, redraw=True), transition=dict(duration=0))])
+                for i in range(len(labels))
+            ],
+        )],
+    )
+    for name in ("map", "map2", "map3"):
+        fig.update_layout(**{name: dict(style="open-street-map", center=center, zoom=4.85)})
+    return fig
