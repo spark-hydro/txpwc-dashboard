@@ -48,6 +48,26 @@ def _zip_bytes(key: tuple, _files: dict) -> bytes:
     return buf.getvalue()
 
 
+PREVIEW_ROWS = 200
+
+
+def _preview_button(name: str, df: pd.DataFrame) -> None:
+    """One button per file; it opens a small window with the table, scrollable both ways."""
+    label = f"{name} · {len(df):,} rows"
+    try:
+        box = st.popover(label, width="stretch")
+    except TypeError:  # older Streamlit
+        box = st.popover(label, use_container_width=True)
+    with box:
+        shown = min(len(df), PREVIEW_ROWS)
+        st.markdown(f"**{name}**")
+        st.caption(
+            f"{len(df):,} rows × {df.shape[1]} columns"
+            + (f" — showing the first {shown:,}; the download has them all." if len(df) > shown else ".")
+        )
+        st.dataframe(df.head(PREVIEW_ROWS), hide_index=True, height=320, width="stretch")
+
+
 @st.fragment
 def render_download_panel(
     families: list[Family], basin: str = "Pecos", map_selection: dict[str, list[str]] | None = None,
@@ -109,7 +129,11 @@ def render_download_panel(
 
         rows = sum(len(df) for df in files.values())
         st.caption(f"{n_points:,} points · {len(files)} file{'s' if len(files) > 1 else ''} · {rows:,} rows")
-        st.markdown("\n".join(f"- `{name}` · {len(df):,} rows" for name, df in files.items()))
+        st.caption("Click a file to preview its columns and first rows before downloading.")
+        # preview windows a bit wider than the default, but never wider than the screen
+        st.html("<style>[data-testid='stPopoverBody'] { min-width: min(760px, 92vw); }</style>")
+        for name, df in files.items():
+            _preview_button(name, df)
         if len(files) == 1:
             (name, df), = files.items()
             st.download_button("Download CSV", _csv_bytes(df), file_name=name, mime="text/csv", key="dl_button_csv")
