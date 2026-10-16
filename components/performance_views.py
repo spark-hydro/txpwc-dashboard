@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -21,6 +22,7 @@ from core.io.climate_reader import (
     read_et_spatial_by_month,
     read_et_spatial_by_year,
 )
+from core.io.groundwater_reader import read_groundwater_by_month, read_river_salinity_by_month, read_soil_salt_by_year
 from core.io.gw_calibration_reader import read_gw_calibration_pairs, read_gw_calibration_wells
 from components.data_download import Family, render_download_panel
 from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
@@ -49,6 +51,7 @@ from core.plotting.climate import (
     plot_et_water_balance,
 )
 from core.plotting.duration_curves import plot_fdc
+from core.plotting.groundwater_maps import plot_groundwater_animation
 from core.plotting.gw_calibration import plot_gw_well_timeseries
 from core.plotting.observation_map import expected_layer_order, plot_observation_map
 from core.plotting.salinity import (
@@ -467,6 +470,84 @@ def render_et_view(bundle, context) -> None:
         )
     if not et_grid.empty:
         st.plotly_chart(plot_et_grid_distribution(et_grid), width="stretch", key="et_grid_hist")
+
+
+@st.cache_data(show_spinner="Preparing the groundwater maps…")
+def _groundwater_animation(basin_dir, step: str):
+    """Animated salinity / recharge / depth-to-water-table maps; cached per time step."""
+    gw = read_groundwater_by_month(basin_dir)
+    rv = read_river_salinity_by_month(basin_dir)
+    soil = read_soil_salt_by_year(basin_dir)
+    cells = gw[["lat", "lon"]].drop_duplicates().sort_values(["lat", "lon"], ascending=[False, True]).reset_index(drop=True)
+    cell_idx = pd.MultiIndex.from_frame(cells)
+    reach = rv[["gis_id", "lat", "lon"]].drop_duplicates("gis_id").sort_values("gis_id").reset_index(drop=True)
+    soil_w = soil.set_index(["lat", "lon", "year"]).soil_salt_kgha.unstack("year").reindex(cell_idx)
+
+    if step == "Monthly":
+        keys = sorted({(int(y), int(m)) for y, m in zip(gw["year"], gw["month"])})
+        labels = [f"{y}-{m:02d}" for y, m in keys]
+        ticks = [str(y) if m == 1 else "" for y, m in keys]
+        unit_time = "mm/month"
+
+        def cellw(col):
+            return gw.set_index(["lat", "lon", "year", "month"])[col].unstack(["year", "month"]).reindex(cell_idx)[keys]
+
+        recharge, depth, exch = cellw("recharge_mm"), cellw("wt_depth_m"), cellw("stream_exchange_m3s")
+        river = rv.set_index(["gis_id", "year", "month"]).tds_mgL.unstack(["year", "month"]).reindex(reach.gis_id)[keys]
+        soil_frames = [soil_w[y].to_numpy() for y, _ in keys]
+    else:
+        years = sorted(int(y) for y in gw["year"].unique())
+        labels = [str(y) for y in years]
+        ticks = labels
+        unit_time = "mm/yr"
+        g = gw.groupby(["lat", "lon", "year"]).agg(
+            recharge=("recharge_mm", "sum"), depth=("wt_depth_m", "mean"), exch=("stream_exchange_m3s", "mean"))
+        recharge = g.recharge.unstack("year").reindex(cell_idx)[years]
+        depth = g.depth.unstack("year").reindex(cell_idx)[years]
+        exch = g.exch.unstack("year").reindex(cell_idx)[years]
+        river = rv.groupby(["gis_id", "year"]).tds_mgL.mean().unstack("year").reindex(reach.gis_id)[years]
+        soil_frames = [soil_w[y].to_numpy() for y in years]
+
+    arrs = lambda df: [df.iloc[:, i].to_numpy() for i in range(df.shape[1])]
+    caps = {
+        "soil": float(np.ceil(np.nanpercentile(soil["soil_salt_kgha"], 95) / 10) * 10),
+        "river": 20000.0,
+        "recharge": float(np.ceil(np.nanpercentile(recharge.to_numpy(), 99) * 10) / 10),
+        "depth": 100.0,
+        "exchange": 0.2,
+    }
+    return plot_groundwater_animation(
+        cells["lat"].to_numpy(), cells["lon"].to_numpy(), reach["lat"].to_numpy(), reach["lon"].to_numpy(),
+        labels, ticks, unit_time, soil_frames, arrs(river), arrs(recharge), arrs(depth), arrs(exch), caps,
+    )
+
+
+def render_groundwater_view(bundle, context) -> None:
+    if context.basin_id != "Pecos":
+        st.info("The groundwater maps are only available for the Pecos basin right now.")
+        return
+    basin_dir = bundle.basin_dir
+    if read_groundwater_by_month(basin_dir).empty:
+        st.info("The groundwater map data has not been generated yet.")
+        return
+
+    step = st.radio("Time step", ["Annual", "Monthly"], horizontal=True, key="gw_step")
+    st.caption(
+        "The production run's aquifer and salinity output, 2010–2024, on the same 0.1° grid as the ET maps. "
+        "Use the slider or Play to step through time; the frames are already in your browser. "
+        "**Salinity** layers two things: salt held in the soil (grid cells, kg/ha, yearly) and the total dissolved "
+        "salts of the river reaches (dots, mg/L, monthly; dry reaches are left blank and the color scale stops at 20,000). "
+        "**Depth to water table** carries the groundwater–river exchange on top: blue dots are reaches the aquifer "
+        "feeds, red dots are reaches that lose water to it (the model does not simulate salt in the aquifer itself)."
+    )
+    st.plotly_chart(
+        _groundwater_animation(basin_dir, step), width="stretch", key=f"gw_anim_{step}",
+        config={"displayModeBar": False},
+    )
+    st.caption(
+        "Soil salt falls steadily through the period in this run — the model's starting salt is leached out over "
+        "time — so read its trend as a spin-up effect, not as a measured change."
+    )
 
 
 # --------------------------------------------------------------------------
