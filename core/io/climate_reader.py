@@ -64,6 +64,19 @@ def read_et_spatial_by_year(basin_dir: Path) -> pd.DataFrame:
 
 
 @st.cache_data
+def read_et_spatial_by_month(basin_dir: Path) -> pd.DataFrame:
+    """The same 1,148 cells, one row per cell and month (2010-2024): the model's ET
+    (HRU + groundwater, production run with monthly output) and the two products,
+    mm/month. Column names match read_et_spatial_by_year."""
+    path = basin_dir / "et_spatial_by_month.csv.gz"
+    cols = ["year", "month", "lat", "lon", "model_v52prod_mm", "ssebop_et_mm", "terraclimate_et_mm"]
+    if not path.exists():
+        return pd.DataFrame(columns=cols)
+    df = read_csv(path)
+    return df.rename(columns={"model_mm": "model_v52prod_mm", "ssebop_mm": "ssebop_et_mm", "terraclimate_mm": "terraclimate_et_mm"})
+
+
+@st.cache_data
 def read_et_regions(basin_dir: Path) -> pd.DataFrame:
     """Sub-regions (whole basin, foothills, irrigated bands, ...) with display labels."""
     path = basin_dir / "et_regions.csv"
@@ -75,8 +88,8 @@ def read_et_regions(basin_dir: Path) -> pd.DataFrame:
 @st.cache_data
 def read_et_region_monthly(basin_dir: Path) -> pd.DataFrame:
     """Monthly regional ET (mm/month) from the two remote-sensing products,
-    TerraClimate (2000-2025) and SSEBop (2003-2025). The model's own monthly
-    ET is not available yet -- see read_et_region_annual for its annual totals."""
+    TerraClimate (2000-2025) and SSEBop (2003-2025), plus the production run's
+    own monthly ET (model_v52prod_aet_mm, from the monthly-output rerun)."""
     path = basin_dir / "et_region_monthly.csv"
     if not path.exists():
         return pd.DataFrame(columns=["region", "month", "terraclimate_aet_mm", "ssebop_aet_mm"])

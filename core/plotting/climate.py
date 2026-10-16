@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False, shared_cmax: float | None = None, diverging_bound: float | None = None) -> go.Figure:
+def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bool = False, shared_cmax: float | None = None, diverging_bound: float | None = None, unit: str = "mm/yr") -> go.Figure:
     """One 0.1-deg ET grid as colored points: model, a product, or their difference.
 
     Pass ``shared_cmax`` (the max of both the model and the product) so the
@@ -27,8 +27,8 @@ def plot_et_spatial_map(df: pd.DataFrame, column: str, title: str, diverging: bo
             lat=df["lat"], lon=df["lon"],
             mode="markers",
             marker=dict(size=9, color=vals, colorscale=colorscale, cmin=cmin, cmax=cmax, showscale=True,
-                        colorbar=dict(title="mm/yr")),
-            text=[f"{title}: {v:,.0f} mm/yr" for v in vals],
+                        colorbar=dict(title=unit)),
+            text=[f"{title}: {v:,.0f} {unit}" for v in vals],
             hovertemplate="%{text}<extra></extra>",
         )
     )
@@ -145,8 +145,9 @@ def plot_et_water_balance(df: pd.DataFrame) -> go.Figure:
 
 
 def plot_et_region_monthly(monthly: pd.DataFrame, start_year: int = 2010) -> go.Figure:
-    """Monthly regional ET from the two remote-sensing products (observed style)."""
-    from core.plotting.style import obs_marker
+    """Monthly regional ET: the two remote-sensing products (observed style) and,
+    when present, the production run's monthly output (simulated style)."""
+    from core.plotting.style import obs_marker, sim_color
 
     sub = monthly[monthly["date"].dt.year >= start_year].sort_values("date")
     fig = go.Figure()
@@ -162,6 +163,13 @@ def plot_et_region_monthly(monthly: pd.DataFrame, start_year: int = 2010) -> go.
             marker=obs_marker(6, symbol="diamond"),
         )
     )
+    if "model_v52prod_aet_mm" in sub.columns and sub["model_v52prod_aet_mm"].notna().any():
+        fig.add_trace(
+            go.Scatter(
+                x=sub["date"], y=sub["model_v52prod_aet_mm"], mode="lines", name="Model — production run",
+                line=dict(color=sim_color(0), width=2),
+            )
+        )
     fig.update_layout(
         yaxis_title="Actual ET (mm/month)",
         template="plotly_white",

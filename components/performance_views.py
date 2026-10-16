@@ -18,6 +18,7 @@ from core.io.climate_reader import (
     read_et_region_annual,
     read_et_region_monthly,
     read_et_regions,
+    read_et_spatial_by_month,
     read_et_spatial_by_year,
 )
 from core.io.gw_calibration_reader import read_gw_calibration_pairs, read_gw_calibration_wells
@@ -370,43 +371,59 @@ def render_et_view(bundle, context) -> None:
 
     basin_dir = bundle.basin_dir
     by_year = read_et_spatial_by_year(basin_dir)
+    by_month = read_et_spatial_by_month(basin_dir)
 
     if not by_year.empty:
         MEAN = "2010–2019 mean"
-        years = sorted(by_year["year"].unique().tolist())
         product = st.radio(
             "Compare against", options=["ssebop_et_mm", "terraclimate_et_mm"], horizontal=True,
             format_func=lambda c: "SSEBop (MODIS, energy balance)" if c == "ssebop_et_mm" else "TerraClimate",
         )
         label = "SSEBop" if product == "ssebop_et_mm" else "TerraClimate"
-        pick = st.select_slider("Year", options=[MEAN, *years], value=MEAN, key="et_map_year")
+        step = "Annual"
+        if not by_month.empty:
+            step = st.radio("Time step", ["Annual", "Monthly"], horizontal=True, key="et_step")
 
-        if pick == MEAN:
-            spatial = (
-                by_year[by_year["year"].between(2010, 2019)]
-                .groupby(["lat", "lon"], as_index=False)[["model_v52prod_mm", product]].mean()
-            )
-            when = "2010–2019 mean"
+        if step == "Monthly":
+            data, unit = by_month, "mm/month"
+            months = sorted({(int(y), int(m)) for y, m in zip(data["year"], data["month"])})
+            labels = [f"{y}-{m:02d}" for y, m in months]
+            pick = st.select_slider("Month", options=labels, value="2015-07", key="et_map_month")
+            y, m = (int(x) for x in pick.split("-"))
+            spatial = data[(data["year"] == y) & (data["month"] == m)][["lat", "lon", "model_v52prod_mm", product]]
+            when = pick
+            note = "Drag the month to step through 2010–2024"
         else:
-            spatial = by_year[by_year["year"] == pick][["lat", "lon", "model_v52prod_mm", product]]
-            when = str(pick)
+            data, unit = by_year, "mm/yr"
+            years = sorted(by_year["year"].unique().tolist())
+            pick = st.select_slider("Year", options=[MEAN, *years], value=MEAN, key="et_map_year")
+            if pick == MEAN:
+                spatial = (
+                    by_year[by_year["year"].between(2010, 2019)]
+                    .groupby(["lat", "lon"], as_index=False)[["model_v52prod_mm", product]].mean()
+                )
+                when = "2010–2019 mean"
+            else:
+                spatial = by_year[by_year["year"] == pick][["lat", "lon", "model_v52prod_mm", product]]
+                when = str(pick)
+            note = "Drag the year to step through 2010–2024"
         spatial = spatial.rename(columns={"model_v52prod_mm": "model_et_mm"}).dropna(subset=["model_et_mm"])
         st.caption(
             "The model's own ET (HRU + groundwater ET, production run) against a remote-sensing product at "
-            "0.1° grid cells. Drag the year to step through 2010–2024; colors keep one scale across years. "
+            f"0.1° grid cells. {note}; colors keep one scale across the whole period. "
             "In the difference map, green means the model evaporates more."
         )
 
         if spatial[product].notna().sum() == 0:
             st.info(f"{label} has no usable values for {when}; the model map is shown on its own.")
         diff = spatial.assign(diff_mm=spatial["model_et_mm"] - spatial[product])
-        cmax = float(by_year[["model_v52prod_mm", "ssebop_et_mm", "terraclimate_et_mm"]].max().max())
-        dbound = float((by_year["model_v52prod_mm"] - by_year[product]).abs().max())
+        cmax = float(data[["model_v52prod_mm", "ssebop_et_mm", "terraclimate_et_mm"]].max().max())
+        dbound = float((data["model_v52prod_mm"] - data[product]).abs().max())
 
         col_m, col_p, col_d = st.columns(3)
-        col_m.plotly_chart(plot_et_spatial_map(spatial, "model_et_mm", f"Model ET — {when}", shared_cmax=cmax), width="stretch", key="et_map_model")
-        col_p.plotly_chart(plot_et_spatial_map(spatial.dropna(subset=[product]) if spatial[product].notna().any() else spatial, product, f"{label} ET — {when}", shared_cmax=cmax), width="stretch", key="et_map_product")
-        col_d.plotly_chart(plot_et_spatial_map(diff.dropna(subset=["diff_mm"]) if diff["diff_mm"].notna().any() else diff, "diff_mm", f"Model − {label} — {when}", diverging=True, diverging_bound=dbound), width="stretch", key="et_map_diff")
+        col_m.plotly_chart(plot_et_spatial_map(spatial, "model_et_mm", f"Model ET — {when}", shared_cmax=cmax, unit=unit), width="stretch", key="et_map_model")
+        col_p.plotly_chart(plot_et_spatial_map(spatial.dropna(subset=[product]) if spatial[product].notna().any() else spatial, product, f"{label} ET — {when}", shared_cmax=cmax, unit=unit), width="stretch", key="et_map_product")
+        col_d.plotly_chart(plot_et_spatial_map(diff.dropna(subset=["diff_mm"]) if diff["diff_mm"].notna().any() else diff, "diff_mm", f"Model − {label} — {when}", diverging=True, diverging_bound=dbound, unit=unit), width="stretch", key="et_map_diff")
 
         stats = compute_et_spatial_stats(spatial["model_et_mm"], spatial[product])
         if stats:
@@ -428,8 +445,8 @@ def render_et_view(bundle, context) -> None:
         st.markdown("**Monthly, 2010–2025**")
         st.plotly_chart(plot_et_region_monthly(monthly[monthly["region"] == region]), width="stretch", key="et_monthly_chart")
         st.caption(
-            "Both products are remote-sensing estimates, drawn as observations. The model's monthly ET "
-            "isn't available yet (its monthly output is still being generated), so it appears in the annual view below."
+            "Both products are remote-sensing estimates, drawn as observations; the line is the production run's "
+            "monthly ET (HRU + groundwater)."
         )
         st.markdown("**Annual, 2010–2025**")
         st.plotly_chart(plot_et_region_annual(annual[annual["region"] == region]), width="stretch", key="et_annual_chart")
