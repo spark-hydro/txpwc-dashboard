@@ -95,6 +95,10 @@ def render_download_panel(
 
         rows = sum(len(df) for df in files.values())
         st.caption(f"{n_points:,} points · {len(files)} file{'s' if len(files) > 1 else ''} · {rows:,} rows")
+        st.dataframe(
+            pd.DataFrame({"File": list(files), "Rows": [len(df) for df in files.values()]}),
+            hide_index=True, width="stretch",
+        )
         if len(files) == 1:
             (name, df), = files.items()
             st.download_button("Download CSV", _csv_bytes(df), file_name=name, mime="text/csv", key="dl_button_csv")

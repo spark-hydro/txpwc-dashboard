@@ -236,13 +236,18 @@ def render_observation_view(bundle, context) -> None:
     )
     map_col, side_col = st.columns([5, 2])
     with map_col:
+        tool = st.segmented_control(
+            "Map tool", options=["Pan / click", "Select box", "Select lasso"], default="Pan / click",
+            key="perf_map_tool", help="Box and lasso pick a group of points (only the layers switched on) for the download panel.",
+        ) or "Pan / click"
+        fig.update_layout(dragmode={"Pan / click": "pan", "Select box": "select", "Select lasso": "lasso"}[tool])
         st.plotly_chart(
             fig, width="stretch", on_select="rerun", selection_mode=("points", "box", "lasso"),
-            config={"scrollZoom": True}, key=map_key,
+            config={"scrollZoom": True, "displayModeBar": True}, key=map_key,
         )
         st.caption(
             "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing. "
-            "To pick a group, use the box or lasso tool in the map's toolbar: only the layers switched on are included."
+            "To pick a group, switch the map tool to Select box or Select lasso and drag over the map: only the layers switched on are included."
         )
 
     sal_series = pd.concat([
