@@ -28,7 +28,9 @@ def read_salinity_station_meta(basin_dir: Path) -> pd.DataFrame:
     path = basin_dir / "salinity_station_meta.csv"
     if not path.exists():
         return pd.DataFrame(columns=["station", "site", "lat", "lon", "n_cl", "n_so4", "n_tds"])
-    return read_csv(path, dtype={"site": str})
+    df = read_csv(path, dtype={"site": str})
+    df["site"] = df["site"].str.zfill(8)  # USGS site numbers are 8 digits
+    return df
 
 
 @st.cache_data
@@ -37,6 +39,7 @@ def read_salinity_station_observed(basin_dir: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame(columns=["station", "site", "constituent", "date", "value_mgL"])
     df = read_csv(path, dtype={"site": str})
+    df["site"] = df["site"].str.zfill(8)
     df["date"] = pd.to_datetime(df["date"])
     return df
 
@@ -46,7 +49,9 @@ def read_salinity_station_simulated(basin_dir: Path) -> pd.DataFrame:
     path = basin_dir / "salinity_station_simulated.csv"
     if not path.exists():
         return pd.DataFrame(columns=["station", "site", "constituent", "year", "value_mgL"])
-    return read_csv(path, dtype={"site": str})
+    df = read_csv(path, dtype={"site": str})
+    df["site"] = df["site"].str.zfill(8)
+    return df
 
 
 @st.cache_data

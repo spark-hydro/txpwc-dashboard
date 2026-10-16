@@ -10,7 +10,7 @@ The Pecos Basin TxPWC application evaluates **salinity transport** after a treat
 
 <p align="center"><a href="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/ua.gif" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/spark-hydro/txpwc-dashboard/main/resources/content/images/ua.gif" width="1000" style="cursor:zoom-in;"></a></p>
 
-*PEST++ ensemble calibration for geochemical constituents — salt mineral fraction and major ions (Ca, Cl, CO₃, HCO₃, K, Mg, Na, SO₄) — narrowing across iterations (gray = prior, purple = posterior). Early groundwork toward the salinity-transport recalibration described on the [Hydrology](/Hydrology) roadmap. Provided by the project team; exact source run and status to be confirmed before presenting. Tap / click to zoom.*
+*PEST++ ensemble calibration for geochemical constituents — salt mineral fraction and major ions (Ca, Cl, CO₃, HCO₃, K, Mg, Na, SO₄) — narrowing across iterations (gray = prior, purple = posterior). Early groundwork toward the salinity-transport recalibration described on the Hydrology roadmap. Provided by the project team; exact source run and status to be confirmed before presenting. Tap / click to zoom.*
 
 ## Interactive Salinity-Transport Lab
 

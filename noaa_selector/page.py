@@ -27,7 +27,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from folium.plugins import MarkerCluster
 from scipy.stats import linregress
-from streamlit_folium import st_folium
+import streamlit.components.v1 as components
 
 try:
     from .scripts.export_swatplus import export_swatplus
@@ -269,6 +269,31 @@ def apply_filters(catalog: pd.DataFrame, filters: dict) -> pd.DataFrame:
 # MAIN APP
 # ══════════════════════════════════════════════════════════════════════════════
 
+@st.cache_data(show_spinner=False, max_entries=24)
+def _folium_html(key: tuple, _build) -> str:
+    """Render a folium map to standalone HTML once per `key`. Both maps on this page are view-only,
+    so there is no need to rebuild and re-render thousands of markers on every rerun."""
+    return _build().get_root().render()
+
+
+@st.cache_data(show_spinner=False)
+def _basin_geojson_light() -> dict:
+    """Subbasin polygons for the view-only maps: simplified (about 200 m) and rounded, which cuts the
+    map's HTML several-fold. The analysis itself keeps using the full-resolution `load_basin()`."""
+    basin = load_basin()
+    light = basin.copy()
+    light["geometry"] = basin.geometry.simplify(0.002, preserve_topology=True).set_precision(0.0001)
+    return {"basin_json": light.to_json(), "centroid": basin.geometry.unary_union.centroid}
+
+
+def _show_html(html: str, height: int) -> None:
+    """Embed generated HTML. st.iframe replaces components.html in newer Streamlit; keep both working."""
+    if hasattr(st, "iframe"):
+        st.iframe(html, height=height)
+    else:
+        components.html(html, height=height)
+
+
 def run_app():
 
     language = st.sidebar.selectbox("Language / Idioma", ["English", "Español"])
@@ -386,69 +411,72 @@ def run_app():
             "Usa la siguiente sección para filtrar por calidad."
         ))
 
-        centroid_ov = basin.geometry.unary_union.centroid
-        m_ov = folium.Map(
-            location=[centroid_ov.y, centroid_ov.x],
-            zoom_start=7,
-            tiles="CartoDB positron",
-        )
-
-        # Subbasins
-        folium.GeoJson(
-            basin.to_json(),
-            name=T("Subbasins (460)", "Subcuencas (460)"),
-            style_function=lambda _: {
-                "fillColor": "#cccccc", "fillOpacity": 0.15,
-                "color": "#666666", "weight": 0.5,
-            },
-        ).add_to(m_ov)
-
-        # Watershed outline (dashed)
-        try:
-            basin_outline_ov = gpd.GeoDataFrame(
-                geometry=[basin.geometry.unary_union], crs=basin.crs
+        def _build_overview():
+            geo_light = _basin_geojson_light()
+            centroid_ov = geo_light["centroid"]
+            m_ov = folium.Map(
+                location=[centroid_ov.y, centroid_ov.x],
+                zoom_start=7,
+                tiles="OpenStreetMap",
             )
+
+            # Subbasins
             folium.GeoJson(
-                basin_outline_ov.to_json(),
-                name=T("Watershed boundary", "Límite de cuenca"),
+                geo_light["basin_json"],
+                name=T("Subbasins (460)", "Subcuencas (460)"),
                 style_function=lambda _: {
-                    "fillOpacity": 0, "color": "#003399", "weight": 2.5,
-                    "dashArray": "8 5",
+                    "fillColor": "#cccccc", "fillOpacity": 0.15,
+                    "color": "#666666", "weight": 0.5,
                 },
             ).add_to(m_ov)
-        except Exception:
-            pass
 
-        # Stations colored by elevation band (clustered)
-        band_colors = {
-            "low": "blue", "mid-low": "green",
-            "mid-high": "orange", "high": "red", "NA": "gray",
-        }
-        cluster_ov = MarkerCluster(
-            name=T(f"Stations ({len(catalog)})",
-                   f"Estaciones ({len(catalog)})")
-        ).add_to(m_ov)
+            # Watershed outline (dashed)
+            try:
+                basin_outline_ov = gpd.GeoDataFrame(
+                    geometry=[basin.geometry.unary_union], crs=basin.crs
+                )
+                folium.GeoJson(
+                    basin_outline_ov.to_json(),
+                    name=T("Watershed boundary", "Límite de cuenca"),
+                    style_function=lambda _: {
+                        "fillOpacity": 0, "color": "#003399", "weight": 2.5,
+                        "dashArray": "8 5",
+                    },
+                ).add_to(m_ov)
+            except Exception:
+                pass
 
-        for row in catalog.itertuples():
-            band = getattr(row, "elev_band", "NA")
-            color = band_colors.get(band, "gray")
-            popup_html = (
-                f"<b>{row.name}</b><br>"
-                f"<i>{getattr(row, 'id', '')}</i><br>"
-                f"Elevation: {getattr(row, 'elevation', 0):.0f} m ({band})<br>"
-                f"Record: {getattr(row, 'span_years', 0):.1f} yr<br>"
-                f"NOAA coverage: {getattr(row, 'datacoverage', 0):.0%}"
-            )
-            folium.CircleMarker(
-                location=[row.latitude, row.longitude],
-                radius=4,
-                color=color, fill=True, fill_opacity=0.7, weight=1,
-                popup=folium.Popup(popup_html, max_width=250),
-            ).add_to(cluster_ov)
+            # Stations colored by elevation band (clustered)
+            band_colors = {
+                "low": "blue", "mid-low": "green",
+                "mid-high": "orange", "high": "red", "NA": "gray",
+            }
+            cluster_ov = MarkerCluster(
+                name=T(f"Stations ({len(catalog)})",
+                       f"Estaciones ({len(catalog)})")
+            ).add_to(m_ov)
 
-        folium.LayerControl().add_to(m_ov)
-        st_folium(m_ov, width=None, height=600,
-                  returned_objects=[], use_container_width=True)
+            for row in catalog.itertuples():
+                band = getattr(row, "elev_band", "NA")
+                color = band_colors.get(band, "gray")
+                popup_html = (
+                    f"<b>{row.name}</b><br>"
+                    f"<i>{getattr(row, 'id', '')}</i><br>"
+                    f"Elevation: {getattr(row, 'elevation', 0):.0f} m ({band})<br>"
+                    f"Record: {getattr(row, 'span_years', 0):.1f} yr<br>"
+                    f"NOAA coverage: {getattr(row, 'datacoverage', 0):.0%}"
+                )
+                folium.CircleMarker(
+                    location=[row.latitude, row.longitude],
+                    radius=4,
+                    color=color, fill=True, fill_opacity=0.7, weight=1,
+                    popup=folium.Popup(popup_html, max_width=250),
+                ).add_to(cluster_ov)
+
+            folium.LayerControl().add_to(m_ov)
+            return m_ov
+
+        _show_html(_folium_html(("overview", language), _build_overview), 620)
 
         st.subheader(T("📊 Catalog distributions", "📊 Distribuciones del catálogo"))
         col1, col2 = st.columns(2)
@@ -835,87 +863,90 @@ def run_app():
             ))
 
         # Build Folium map with subbasins + buffer + stations
-        centroid = basin.geometry.unary_union.centroid
-        m_sel = folium.Map(
-            location=[centroid.y, centroid.x],
-            zoom_start=7,
-            tiles="CartoDB positron",
-        )
-
-        # Subbasins layer (gray polygons)
-        folium.GeoJson(
-            basin.to_json(),
-            name=T("Subbasins (460)", "Subcuencas (460)"),
-            style_function=lambda _: {
-                "fillColor": "#cccccc", "fillOpacity": 0.15,
-                "color": "#666666", "weight": 0.5,
-            },
-        ).add_to(m_sel)
-
-        # Watershed outline (dashed)
-        try:
-            basin_outline = gpd.GeoDataFrame(
-                geometry=[basin.geometry.unary_union], crs=basin.crs
+        def _build_selection():
+            geo_light = _basin_geojson_light()
+            centroid = geo_light["centroid"]
+            m_sel = folium.Map(
+                location=[centroid.y, centroid.x],
+                zoom_start=7,
+                tiles="OpenStreetMap",
             )
+
+            # Subbasins layer (gray polygons)
             folium.GeoJson(
-                basin_outline.to_json(),
-                name=T("Watershed boundary", "Límite de cuenca"),
+                geo_light["basin_json"],
+                name=T("Subbasins (460)", "Subcuencas (460)"),
                 style_function=lambda _: {
-                    "fillOpacity": 0, "color": "#003399", "weight": 2.5,
-                    "dashArray": "8 5",
+                    "fillColor": "#cccccc", "fillOpacity": 0.15,
+                    "color": "#666666", "weight": 0.5,
                 },
             ).add_to(m_sel)
-        except Exception:
-            pass
 
-        # Filtered-out stations as small gray circles
-        excluded = catalog[~catalog["id"].isin(filtered["id"])]
-        excluded_layer = folium.FeatureGroup(
-            name=T(f"Filtered out ({len(excluded)})",
-                   f"Filtradas ({len(excluded)})")
-        )
-        for row in excluded.itertuples():
-            folium.CircleMarker(
-                location=[row.latitude, row.longitude],
-                radius=2, color="#999999",
-                fill=True, fill_opacity=0.4, weight=0,
-            ).add_to(excluded_layer)
-        excluded_layer.add_to(m_sel)
+            # Watershed outline (dashed)
+            try:
+                basin_outline = gpd.GeoDataFrame(
+                    geometry=[basin.geometry.unary_union], crs=basin.crs
+                )
+                folium.GeoJson(
+                    basin_outline.to_json(),
+                    name=T("Watershed boundary", "Límite de cuenca"),
+                    style_function=lambda _: {
+                        "fillOpacity": 0, "color": "#003399", "weight": 2.5,
+                        "dashArray": "8 5",
+                    },
+                ).add_to(m_sel)
+            except Exception:
+                pass
 
-        # Selected stations colored by elevation band (same as overview map)
-        band_colors = {
-            "low": "blue", "mid-low": "green",
-            "mid-high": "orange", "high": "red", "NA": "gray",
-        }
-        cluster = MarkerCluster(
-            name=T(f"Selected stations ({len(filtered)})",
-                   f"Estaciones seleccionadas ({len(filtered)})")
-        ).add_to(m_sel)
-
-        for row in filtered.itertuples():
-            score_val = getattr(row, "score", float("nan"))
-            cov_val   = getattr(row, "cover_frac", float("nan"))
-            span_val  = getattr(row, "span_years", float("nan"))
-            band  = getattr(row, "elev_band", "NA")
-            color = band_colors.get(band, "gray")
-            popup_html = (
-                f"<b>{row.name}</b><br>"
-                f"<i>{getattr(row, 'id', '')}</i><br>"
-                f"Elevation: {getattr(row, 'elevation', 0):.0f} m "
-                f"({band})<br>"
-                f"Record: {span_val:.1f} yr<br>"
-                f"Cal coverage: {cov_val:.0%}<br>"
-                f"<b>Score: {score_val:.3f}</b>"
+            # Filtered-out stations as small gray circles
+            excluded = catalog[~catalog["id"].isin(filtered["id"])]
+            excluded_layer = folium.FeatureGroup(
+                name=T(f"Filtered out ({len(excluded)})",
+                       f"Filtradas ({len(excluded)})")
             )
-            folium.Marker(
-                location=[row.latitude, row.longitude],
-                popup=folium.Popup(popup_html, max_width=250),
-                icon=folium.Icon(color=color, icon="cloud", prefix="fa"),
-            ).add_to(cluster)
+            for row in excluded.itertuples():
+                folium.CircleMarker(
+                    location=[row.latitude, row.longitude],
+                    radius=2, color="#999999",
+                    fill=True, fill_opacity=0.4, weight=0,
+                ).add_to(excluded_layer)
+            excluded_layer.add_to(m_sel)
 
-        folium.LayerControl().add_to(m_sel)
-        st_folium(m_sel, width=None, height=600,
-                  returned_objects=[], use_container_width=True)
+            # Selected stations colored by elevation band (same as overview map)
+            band_colors = {
+                "low": "blue", "mid-low": "green",
+                "mid-high": "orange", "high": "red", "NA": "gray",
+            }
+            cluster = MarkerCluster(
+                name=T(f"Selected stations ({len(filtered)})",
+                       f"Estaciones seleccionadas ({len(filtered)})")
+            ).add_to(m_sel)
+
+            for row in filtered.itertuples():
+                score_val = getattr(row, "score", float("nan"))
+                cov_val   = getattr(row, "cover_frac", float("nan"))
+                span_val  = getattr(row, "span_years", float("nan"))
+                band  = getattr(row, "elev_band", "NA")
+                color = band_colors.get(band, "gray")
+                popup_html = (
+                    f"<b>{row.name}</b><br>"
+                    f"<i>{getattr(row, 'id', '')}</i><br>"
+                    f"Elevation: {getattr(row, 'elevation', 0):.0f} m "
+                    f"({band})<br>"
+                    f"Record: {span_val:.1f} yr<br>"
+                    f"Cal coverage: {cov_val:.0%}<br>"
+                    f"<b>Score: {score_val:.3f}</b>"
+                )
+                folium.Marker(
+                    location=[row.latitude, row.longitude],
+                    popup=folium.Popup(popup_html, max_width=250),
+                    icon=folium.Icon(color=color, icon="cloud", prefix="fa"),
+                ).add_to(cluster)
+
+            folium.LayerControl().add_to(m_sel)
+            return m_sel
+
+        _show_html(_folium_html(("selection", language, tuple((r.id, round(float(getattr(r, "score", 0) or 0), 4), round(float(getattr(r, "cover_frac", 0) or 0), 3)) for r in filtered.itertuples())), _build_selection), 620)
 
         if not filtered.empty:
 

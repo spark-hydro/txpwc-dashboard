@@ -64,3 +64,27 @@ def plot_annual_water_balance(wb: pd.DataFrame) -> go.Figure:
     )
     fig.update_xaxes(title_text="Year", row=4, col=1)
     return fig
+
+
+def plot_gw_sw_interaction(wb: pd.DataFrame) -> go.Figure:
+    """Groundwater discharge to streams (up), stream seepage to the aquifer
+    (down), and the net exchange -- one bar per year."""
+    from core.plotting.style import sim_color
+
+    net = wb["gwq"] - wb["swgw"]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=wb["yr"], y=wb["gwq"], name="Groundwater → stream", marker_color=sim_color(0)))
+    fig.add_trace(go.Bar(x=wb["yr"], y=-wb["swgw"], name="Stream → aquifer", marker_color=sim_color(1)))
+    fig.add_trace(
+        go.Scatter(x=wb["yr"], y=net, name="Net exchange (to stream)", mode="lines+markers",
+                   line=dict(color=sim_color(2), width=2), marker=dict(size=5))
+    )
+    fig.update_layout(
+        barmode="relative",
+        yaxis_title="mm/yr over the basin",
+        template="plotly_white",
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=20, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return fig

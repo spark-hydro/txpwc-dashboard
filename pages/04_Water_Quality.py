@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
+from core.utils.embed import show_iframe
 
 from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
@@ -177,7 +177,7 @@ if lab_url:
     st.divider()
     st.subheader("Interactive lab — Salinity transport")
     st.link_button("↗ Open the lab in full screen", lab_url, width="stretch")
-    components.iframe(lab_url, height=1000, scrolling=True)
+    show_iframe(lab_url, height=1000)
     st.caption(
         "Source: Texas Produced Water Consortium, *Produced Water Treatment Pilot "
         "Testing: Water Quality Report*, April 2026. Conceptual 2-D teaching model "

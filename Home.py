@@ -1,13 +1,41 @@
 import streamlit as st
 
+import threading
+import time
+
 from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
 from core.utils.kiosk import render_kiosk, should_show_kiosk
-from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
+from core.utils.visual_kit import Card, HeroStat, _image_data_uri, render_cards, render_hero_stats, render_photo_banner
 from pathlib import Path
 import re
+
+
+@st.cache_resource
+def _warm_up_in_background() -> bool:
+    """Import the heavy plotting modules and build one small map figure in a background thread,
+    once per server, so the first visit to Model Performance doesn't pay that cost."""
+    def work():
+        try:
+            time.sleep(3)  # let this first page paint before the imports compete for the CPU
+            import plotly.graph_objects as go
+
+            import components.performance_views  # noqa: F401
+            import noaa_selector.page  # noqa: F401  (folium, geopandas, scipy: the slowest imports)
+            go.Figure([
+                go.Scattermap(lat=[0.0], lon=[0.0], mode="markers", marker=dict(size=5, color=[1], colorscale="RdBu")),
+                go.Choroplethmap(geojson={"type": "FeatureCollection", "features": []}, locations=[], z=[]),
+            ]).to_json()
+        except Exception:
+            pass
+
+    threading.Thread(target=work, daemon=True).start()
+    return True
+
+
+_warm_up_in_background()
 
 # -----------------------------
 # Page config (global layout)
@@ -18,9 +46,8 @@ st.set_page_config(
     layout="wide",
 )
 
-# The kiosk splash is the app's front door: "/" shows it, and the QR codes /
-# links on it lead to "/?app=1", which opens the dashboard for the rest of the
-# session. "/?kiosk=1" forces the splash back up for the next visitor.
+# The kiosk splash is parked: "/" opens the dashboard directly, and
+# "/?kiosk=1" brings the splash back for a poster session.
 if should_show_kiosk():
     render_kiosk()
     st.stop()
@@ -90,6 +117,9 @@ def build_outline_and_html(md_text: str):
 
 md_text = read_markdown_file(CONTENT_DIR / "home.md")
 toc, rendered_md = build_outline_and_html(md_text)
+# Images are shown from small inline WebP copies ({{img:name.webp}} in home.md) instead of fetching
+# multi-megabyte PNGs from GitHub on every visit; the links around them still open the full-size PNG.
+rendered_md = re.sub(r"\{\{img:([^}]+)\}\}", lambda m: _image_data_uri(m.group(1)), rendered_md)
 
 
 # -----------------------------

@@ -18,4 +18,4 @@ Machine learning is the shortcut — **not a replacement for SWAT+gwflow, but a 
 
 ## Status
 
-🚧 **Planned** — this page populates once the reservoir and salinity modules are added to the calibrated SWAT+gwflow model (see [Hydrology](/Hydrology) and [Scenarios](/Scenarios)), giving the surrogate real scenario output to train on.
+🚧 **Planned** — this page populates once the reservoir and salinity modules are added to the calibrated SWAT+gwflow model (see Hydrology and [Scenarios](/Scenarios)), giving the surrogate real scenario output to train on.

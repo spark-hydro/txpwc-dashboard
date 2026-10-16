@@ -6,7 +6,11 @@ import plotly.graph_objects as go
 
 MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-RUN_COLORS = {"v30ext": "#7a7f86", "v33": "#008080", "v52prod": "#0f8fb4"}
+from core.io.streamflow_runs_reader import RUN_LABELS
+from core.plotting.style import obs_marker, sim_color
+
+RUN_ORDER = ["v52prod", "v33", "v30ext"]
+RUN_COLORS = {run: sim_color(i) for i, run in enumerate(RUN_ORDER)}
 
 
 def _gauge_pairs(monthly: pd.DataFrame, gauge_id: str, run_key: str) -> pd.DataFrame:
@@ -59,8 +63,8 @@ def plot_seasonal_shape(stats: dict, run_key: str, normalize: bool = False) -> g
         cs = cs / np.nanmean(cs)
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=MONTH_NAMES, y=co, mode="lines+markers", name="USGS observed",
-                              line=dict(color="#111827", width=2), marker=dict(size=7)))
+    fig.add_trace(go.Scatter(x=MONTH_NAMES, y=co, mode="markers", name="USGS observed",
+                              marker=obs_marker(9)))
     fig.add_trace(go.Scatter(x=MONTH_NAMES, y=cs, mode="lines+markers", name="Simulated",
                               line=dict(color=RUN_COLORS.get(run_key, "#0f8fb4"), width=2), marker=dict(size=7)))
 
@@ -73,22 +77,38 @@ def plot_seasonal_shape(stats: dict, run_key: str, normalize: bool = False) -> g
     return fig
 
 
-def plot_multirun_timeseries(monthly: pd.DataFrame, gauge_id: str, run_keys: list[str], log_scale: bool = True) -> go.Figure:
-    """Observed monthly flow against several runs, 2002-2007."""
+def plot_multirun_timeseries(
+    monthly: pd.DataFrame, gauge_id: str, run_keys: list[str], log_scale: bool = True,
+    subbasin_flow: pd.DataFrame | None = None, subbasin_id: int | None = None,
+) -> go.Figure:
+    """Observed monthly flow against several runs, 2002-2007. When a subbasin is
+    picked, its simulated outlet flow is added as dotted lines (one per run)."""
     sub = monthly[monthly["gauge_id"] == gauge_id].sort_values("month")
     fig = go.Figure()
 
     obs = sub["observed_m3s"].clip(lower=0.01) if log_scale else sub["observed_m3s"]
-    fig.add_trace(go.Scatter(x=sub["month"], y=obs, mode="lines+markers", name="USGS observed",
-                              line=dict(color="#111827", width=1.8), marker=dict(size=4)))
+    fig.add_trace(go.Scatter(x=sub["month"], y=obs, mode="markers", name="USGS observed",
+                              marker=obs_marker(7)))
 
     for run_key in run_keys:
         col = f"sim_{run_key}_m3s"
         if col not in sub.columns:
             continue
         y = sub[col].clip(lower=0.01) if log_scale else sub[col]
-        fig.add_trace(go.Scatter(x=sub["month"], y=y, mode="lines+markers", name=run_key,
-                                  line=dict(color=RUN_COLORS.get(run_key, "#888")), marker=dict(size=3)))
+        fig.add_trace(go.Scatter(x=sub["month"], y=y, mode="lines+markers", name=RUN_LABELS.get(run_key, run_key),
+                                  line=dict(color=RUN_COLORS.get(run_key, "#888"), width=1.6), marker=dict(size=3)))
+
+    if subbasin_flow is not None and subbasin_id is not None:
+        sb = subbasin_flow[subbasin_flow["subbasin"] == subbasin_id].sort_values("month")
+        for run_key in run_keys:
+            col = f"sim_{run_key}_m3s"
+            if col not in sb.columns:
+                continue
+            y = sb[col].clip(lower=0.01) if log_scale else sb[col]
+            fig.add_trace(go.Scatter(
+                x=sb["month"], y=y, mode="lines", name=f"Subbasin {subbasin_id} outlet — {RUN_LABELS.get(run_key, run_key)}",
+                line=dict(color=RUN_COLORS.get(run_key, "#888"), width=2, dash="dot"),
+            ))
 
     fig.update_layout(
         yaxis=dict(title="m³/s (log)" if log_scale else "m³/s", type="log" if log_scale else "linear"),
