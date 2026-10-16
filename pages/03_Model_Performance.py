@@ -13,8 +13,30 @@ st.title("Model Performance")
 st.caption("How the simulations compare with real observations, and what the model says about the basin's water.")
 
 OBSERVATIONS = "Observations"
-ET = "ET"
+ET = "Evapotranspiration"
 HYDROLOGY = "Hydrologic responses"
+
+# The three views are the page's main navigation, so they get a heavier look than the
+# secondary controls (map tool, layer pickers) further down: equal widths, a taller
+# bold button, and a filled colour for the active one.
+st.markdown(
+    """
+    <style>
+    .st-key-perf_view [data-testid="stButtonGroup"] { width: 100%; }
+    .st-key-perf_view button { flex: 1 1 0; min-height: 3.2rem; border-width: 1.5px; }
+    .st-key-perf_view button p { font-size: 1.05rem; font-weight: 700; white-space: normal; text-overflow: clip; overflow: visible; }
+    .st-key-perf_view button[aria-checked="true"],
+    .st-key-perf_view button[data-selected="true"],
+    .st-key-perf_view button[data-testid="stBaseButton-segmented_controlActive"] {
+        background: #1f77b4 !important; border-color: #1f77b4 !important;
+    }
+    .st-key-perf_view button[aria-checked="true"] *,
+    .st-key-perf_view button[data-selected="true"] *,
+    .st-key-perf_view button[data-testid="stBaseButton-segmented_controlActive"] * { color: #ffffff; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 view = st.segmented_control(
     "View", options=[OBSERVATIONS, ET, HYDROLOGY], default=OBSERVATIONS,
