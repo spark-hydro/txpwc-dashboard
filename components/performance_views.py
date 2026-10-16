@@ -125,6 +125,31 @@ def _handle_map_click(points, layer_order, layers):
         ss["sel_salinity"] = layers["salinity"].iloc[idx]["site"]
 
 
+# map layer -> (key in `layers`, id column) for the families a box/lasso can pick
+_GROUP_SOURCES = {
+    "streamflow": ("gauges", "id"),
+    "reservoirs": ("reservoirs", "dam_key"),
+    "wells": ("wells", "id"),
+    "salinity": ("salinity", "site"),
+}
+
+
+def _group_from_points(points, layer_order, layers) -> dict[str, list[str]] | None:
+    """Ids picked by a box/lasso selection, grouped by family. A point is
+    selected on both its dot and its halo, so ids are de-duplicated."""
+    out: dict[str, set[str]] = {}
+    for p in points:
+        curve, idx = p.get("curve_number"), p.get("point_index")
+        if curve is None or idx is None or curve >= len(layer_order):
+            continue
+        family = layer_order[curve].removesuffix("_halo")
+        if family not in _GROUP_SOURCES:
+            continue
+        key, col = _GROUP_SOURCES[family]
+        out.setdefault(family, set()).add(str(layers[key].iloc[idx][col]))
+    return {k: sorted(v) for k, v in out.items()} or None
+
+
 def _click_signature(points):
     if not points:
         return None
@@ -186,9 +211,19 @@ def render_observation_view(bundle, context) -> None:
     enabled = {key for name, key in LAYERS if name in shown}
 
     expected_order = expected_layer_order(enabled)
-    map_state = st.session_state.get("perf_map") or {}
+    map_key = f"perf_map_{ss.get('perf_map_n', 0)}"
+    map_state = ss.get(map_key) or {}
     points = (map_state.get("selection") or {}).get("points", []) if hasattr(map_state, "get") else []
-    _handle_map_click(points, expected_order, layers)
+    if len(points) > 1:
+        # A box/lasso: collect the picked points for the download panel instead of
+        # treating it as a click on one of them.
+        trusted = ss.get("_perf_layers") == tuple(expected_order)
+        ss["map_group"] = _group_from_points(points, expected_order, layers) if trusted else None
+        ss["_perf_layers"] = tuple(expected_order)
+        ss["_perf_click"] = _click_signature(points)
+    else:
+        ss["map_group"] = None
+        _handle_map_click(points, expected_order, layers)
 
     fig, layer_order = plot_observation_map(
         subbasins, color_var,
@@ -200,12 +235,24 @@ def render_observation_view(bundle, context) -> None:
         selected_subbasin=ss.get("sel_subbasin"),
     )
     st.plotly_chart(
-        fig, width="stretch", on_select="rerun", selection_mode="points",
-        config={"scrollZoom": True}, key="perf_map",
+        fig, width="stretch", on_select="rerun", selection_mode=("points", "box", "lasso"),
+        config={"scrollZoom": True}, key=map_key,
     )
     st.caption(
-        "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing."
+        "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing. "
+        "To pick a group, use the box or lasso tool in the map's toolbar: only the layers switched on are included."
     )
+    group = ss.get("map_group")
+    if group:
+        names = {"streamflow": "streamflow", "reservoirs": "reservoirs", "wells": "wells", "salinity": "salinity"}
+        summary = ", ".join(f"{len(v)} {names[k]}" for k, v in group.items())
+        sel_col, clear_col = st.columns([4, 1])
+        sel_col.success(f"Selected on the map: {summary}. They are ready in the download panel below.")
+        if clear_col.button("Clear selection", key="clear_map_group"):
+            ss["perf_map_n"] = ss.get("perf_map_n", 0) + 1
+            ss["map_group"] = None
+            ss["_perf_click"] = None
+            st.rerun()
 
     sal_series = pd.concat([
         sal_obs.assign(source="observed", date=sal_obs["date"].astype(str)),
@@ -216,7 +263,7 @@ def render_observation_view(bundle, context) -> None:
         Family("reservoirs", "Reservoirs", res_meta.drop(columns="flow_gage_id"), read_reservoirs_monthly(basin_dir), "dam_key", "dam_key", "name"),
         Family("wells", "Groundwater wells", wells, gw_pairs, "id", "id"),
         Family("salinity", "Salinity stations", sal_meta, sal_series, "site", "site", "station"),
-    ], basin=context.basin_id)
+    ], basin=context.basin_id, map_selection=group)
 
     # --- chart 1: streamflow + reservoir outlets
     st.divider()

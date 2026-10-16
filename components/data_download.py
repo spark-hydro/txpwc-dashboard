@@ -37,7 +37,9 @@ def _csv_bytes(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8")
 
 
-def render_download_panel(families: list[Family], basin: str = "Pecos") -> None:
+def render_download_panel(
+    families: list[Family], basin: str = "Pecos", map_selection: dict[str, list[str]] | None = None,
+) -> None:
     labels = {f.key: f.label for f in families}
     with st.expander("Download data (CSV)"):
         st.caption(
@@ -52,15 +54,24 @@ def render_download_panel(families: list[Family], basin: str = "Pecos") -> None:
             "Include", ["Locations", "Time series", "Both"], index=2, horizontal=True, key="dl_content",
             help="Locations: one row per point (name, lat/lon, summary). Time series: the observed and simulated values.",
         )
+        use_map = False
+        if map_selection:
+            total = sum(len(v) for v in map_selection.values())
+            use_map = st.checkbox(
+                f"Only the {total:,} points selected on the map", value=True, key="dl_use_map",
+                help="Uncheck to go back to the families chosen above.",
+            )
         narrow = st.checkbox("Choose individual points", value=False, key="dl_narrow")
 
         files: dict[str, pd.DataFrame] = {}
         n_points = 0
         for fam in families:
-            if fam.key not in picked_keys:
+            if fam.key not in picked_keys or (use_map and fam.key not in map_selection):
                 continue
             loc = fam.locations
             ids = loc[fam.loc_id].astype(str).tolist()
+            if use_map:
+                ids = [i for i in ids if i in set(map_selection.get(fam.key, []))]
             if narrow:
                 names = {str(r[fam.loc_id]): _point_label(fam, r) for _, r in loc.iterrows()}
                 chosen = st.multiselect(
