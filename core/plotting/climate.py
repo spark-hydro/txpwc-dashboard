@@ -249,7 +249,7 @@ def plot_et_animation(
                  font=dict(size=14))
             for t, x in zip(titles, (0.165, 0.5, 0.835))
         ]
-        out.append(dict(text=skill, x=0.5, y=-0.30, xref="paper", yref="paper", xanchor="center", yanchor="top",
+        out.append(dict(text=skill, x=0.5, y=-0.37, xref="paper", yref="paper", xanchor="center", yanchor="top",
                         showarrow=False, font=dict(size=13, color="#374151")))
         return out
 
@@ -265,7 +265,7 @@ def plot_et_animation(
                 lat=lat, lon=lon, mode="markers",
                 marker=dict(
                     size=9, color=as_ints(vals), colorscale=scale, cmin=lo, cmax=hi, showscale=True,
-                    colorbar=dict(orientation="h", thickness=9, len=0.3, x=(0.165, 0.5, 0.835)[k], y=-0.08,
+                    colorbar=dict(orientation="h", thickness=9, len=0.3, x=(0.165, 0.5, 0.835)[k], y=-0.03, yanchor="top",
                                   title=dict(text=unit, side="right")),
                 ),
                 hovertemplate=hover + "<extra></extra>",
@@ -287,13 +287,14 @@ def plot_et_animation(
         return [None, dict(frame=dict(duration=ms, redraw=True), fromcurrent=True, transition=dict(duration=0), mode="immediate")]
 
     ticks = slider_ticks or labels
-    center = {"lat": float(lat.mean()), "lon": float(lon.mean())}
+    center = {"lat": float((lat.min() + lat.max()) / 2), "lon": float((lon.min() + lon.max()) / 2)}
     fig.update_layout(
         annotations=annotations(0),
-        height=600,
-        margin=dict(l=0, r=0, t=40, b=170),
+        height=720,
+        showlegend=False,
+        margin=dict(l=0, r=0, t=40, b=230),
         updatemenus=[dict(
-            type="buttons", direction="left", x=0.0, y=-0.17, xanchor="left", yanchor="top", showactive=False,
+            type="buttons", direction="left", x=0.0, y=-0.22, xanchor="left", yanchor="top", showactive=False,
             buttons=[
                 dict(label="▶ Play", method="animate", args=play_args(700)),
                 dict(label="▶ Slow", method="animate", args=play_args(1500)),
@@ -303,7 +304,7 @@ def plot_et_animation(
             ],
         )],
         sliders=[dict(
-            active=0, x=0.30, y=-0.15, len=0.70, xanchor="left", yanchor="top",
+            active=0, x=0.30, y=-0.20, len=0.70, xanchor="left", yanchor="top",
             currentvalue=dict(visible=False), pad=dict(t=0, b=0), ticklen=0, minorticklen=0,
             font=dict(size=11, color="#6b7280"),
             steps=[
@@ -314,5 +315,5 @@ def plot_et_animation(
         )],
     )
     for name in ("map", "map2", "map3"):
-        fig.update_layout(**{name: dict(style="open-street-map", center=center, zoom=4.85)})
+        fig.update_layout(**{name: dict(style="open-street-map", center=center, zoom=5.15)})
     return fig
