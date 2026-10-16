@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+from core.utils.content_images import inline_local_images
+
 
 def slugify(text: str) -> str:
     """Convert heading text to clean anchor ids."""
@@ -63,7 +65,7 @@ def build_outline_and_html(md_text: str, md_file_path: Path):
             # Keep normal markdown lines unchanged
             html_lines.append(line)
 
-    return toc, "\n".join(html_lines)
+    return toc, inline_local_images("\n".join(html_lines))
 
 
 def render_floating_outline(toc: list[tuple[int, str, str]]) -> str:

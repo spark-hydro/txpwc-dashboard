@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
+from core.utils.embed import show_html
 
 DASHBOARD_URL = "https://txpwc-dashboard.streamlit.app/"
 LAB_URL = "https://dauresy.github.io/pecos-salinity-lab/"
@@ -556,7 +556,7 @@ def _render_touch_particles() -> None:
     reaches into the parent document (same-origin, confirmed to work) rather
     than touching the already-tested kiosk markup above.
     """
-    components.html(
+    show_html(
         """
 <script>
 (function() {
