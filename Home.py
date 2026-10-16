@@ -21,6 +21,7 @@ def _warm_up_in_background() -> bool:
             import plotly.graph_objects as go
 
             import components.performance_views  # noqa: F401
+            import noaa_selector.page  # noqa: F401  (folium, geopandas, scipy: the slowest imports)
             go.Figure([
                 go.Scattermap(lat=[0.0], lon=[0.0], mode="markers", marker=dict(size=5, color=[1], colorscale="RdBu")),
                 go.Choroplethmap(geojson={"type": "FeatureCollection", "features": []}, locations=[], z=[]),
