@@ -234,36 +234,37 @@ def render_observation_view(bundle, context) -> None:
         selected_gauge=ss["sel_gauge"], selected_well=ss["sel_well"], selected_salinity=ss["sel_salinity"],
         selected_subbasin=ss.get("sel_subbasin"),
     )
-    st.plotly_chart(
-        fig, width="stretch", on_select="rerun", selection_mode=("points", "box", "lasso"),
-        config={"scrollZoom": True}, key=map_key,
-    )
-    st.caption(
-        "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing. "
-        "To pick a group, use the box or lasso tool in the map's toolbar: only the layers switched on are included."
-    )
-    group = ss.get("map_group")
-    if group:
-        names = {"streamflow": "streamflow", "reservoirs": "reservoirs", "wells": "wells", "salinity": "salinity"}
-        summary = ", ".join(f"{len(v)} {names[k]}" for k, v in group.items())
-        sel_col, clear_col = st.columns([4, 1])
-        sel_col.success(f"Selected on the map: {summary}. They are ready in the download panel below.")
-        if clear_col.button("Clear selection", key="clear_map_group"):
-            ss["perf_map_n"] = ss.get("perf_map_n", 0) + 1
-            ss["map_group"] = None
-            ss["_perf_click"] = None
-            st.rerun()
+    map_col, side_col = st.columns([5, 2])
+    with map_col:
+        st.plotly_chart(
+            fig, width="stretch", on_select="rerun", selection_mode=("points", "box", "lasso"),
+            config={"scrollZoom": True}, key=map_key,
+        )
+        st.caption(
+            "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing. "
+            "To pick a group, use the box or lasso tool in the map's toolbar: only the layers switched on are included."
+        )
 
     sal_series = pd.concat([
         sal_obs.assign(source="observed", date=sal_obs["date"].astype(str)),
         sal_sim.assign(source="simulated (annual)", date=sal_sim["year"].astype(str)).drop(columns="year"),
     ], ignore_index=True)[["station", "site", "constituent", "source", "date", "value_mgL"]]
-    render_download_panel([
-        Family("streamflow", "Streamflow stations", gauges, flow_monthly, "id", "gauge_id", "label"),
-        Family("reservoirs", "Reservoirs", res_meta.drop(columns="flow_gage_id"), read_reservoirs_monthly(basin_dir), "dam_key", "dam_key", "name"),
-        Family("wells", "Groundwater wells", wells, gw_pairs, "id", "id"),
-        Family("salinity", "Salinity stations", sal_meta, sal_series, "site", "site", "station"),
-    ], basin=context.basin_id, map_selection=group)
+    group = ss.get("map_group")
+    with side_col:
+        render_download_panel([
+            Family("streamflow", "Streamflow stations", gauges, flow_monthly, "id", "gauge_id", "label"),
+            Family("reservoirs", "Reservoirs", res_meta.drop(columns="flow_gage_id"), read_reservoirs_monthly(basin_dir), "dam_key", "dam_key", "name"),
+            Family("wells", "Groundwater wells", wells, gw_pairs, "id", "id"),
+            Family("salinity", "Salinity stations", sal_meta, sal_series, "site", "site", "station"),
+        ], basin=context.basin_id, map_selection=group)
+        if group:
+            summary = ", ".join(f"{len(v)} {k}" for k, v in group.items())
+            st.success(f"Selected on the map: {summary}.")
+            if st.button("Clear map selection", key="clear_map_group"):
+                ss["perf_map_n"] = ss.get("perf_map_n", 0) + 1
+                ss["map_group"] = None
+                ss["_perf_click"] = None
+                st.rerun()
 
     # --- chart 1: streamflow + reservoir outlets
     st.divider()

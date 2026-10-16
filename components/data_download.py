@@ -41,7 +41,6 @@ def render_download_panel(
     families: list[Family], basin: str = "Pecos", map_selection: dict[str, list[str]] | None = None,
 ) -> None:
     labels = {f.key: f.label for f in families}
-    st.divider()
     st.subheader("Download data")
     with st.container():
         st.caption(
@@ -53,7 +52,7 @@ def render_download_panel(
             format_func=labels.get, key="dl_families",
         )
         content = st.radio(
-            "Include", ["Locations", "Time series", "Both"], index=2, horizontal=True, key="dl_content",
+            "Include", ["Locations", "Time series", "Both"], index=2, key="dl_content",
             help="Locations: one row per point (name, lat/lon, summary). Time series: the observed and simulated values.",
         )
         use_map = False
