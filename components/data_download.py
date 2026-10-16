@@ -41,7 +41,9 @@ def render_download_panel(
     families: list[Family], basin: str = "Pecos", map_selection: dict[str, list[str]] | None = None,
 ) -> None:
     labels = {f.key: f.label for f in families}
-    with st.expander("Download data (CSV)"):
+    st.divider()
+    st.subheader("Download data")
+    with st.container():
         st.caption(
             "Choose the families you want — all of them or any mix — then what to include. "
             "One family and one table downloads as a CSV; anything larger comes as a ZIP of CSVs."
