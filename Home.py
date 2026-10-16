@@ -1,13 +1,14 @@
 import streamlit as st
 
 import threading
+import time
 
 from components.sidebar import render_sidebar
 from config.settings import APP_ICON, APP_TITLE
 from core.io.filesystem import safe_markdown_read
 from config.settings import CONTENT_DIR
 from core.utils.kiosk import render_kiosk, should_show_kiosk
-from core.utils.visual_kit import Card, HeroStat, render_cards, render_hero_stats, render_photo_banner
+from core.utils.visual_kit import Card, HeroStat, _image_data_uri, render_cards, render_hero_stats, render_photo_banner
 from pathlib import Path
 import re
 
@@ -18,6 +19,7 @@ def _warm_up_in_background() -> bool:
     once per server, so the first visit to Model Performance doesn't pay that cost."""
     def work():
         try:
+            time.sleep(3)  # let this first page paint before the imports compete for the CPU
             import plotly.graph_objects as go
 
             import components.performance_views  # noqa: F401
@@ -115,6 +117,9 @@ def build_outline_and_html(md_text: str):
 
 md_text = read_markdown_file(CONTENT_DIR / "home.md")
 toc, rendered_md = build_outline_and_html(md_text)
+# Images are shown from small inline WebP copies ({{img:name.webp}} in home.md) instead of fetching
+# multi-megabyte PNGs from GitHub on every visit; the links around them still open the full-size PNG.
+rendered_md = re.sub(r"\{\{img:([^}]+)\}\}", lambda m: _image_data_uri(m.group(1)), rendered_md)
 
 
 # -----------------------------
