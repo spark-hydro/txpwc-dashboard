@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pandas as pd
 import streamlit as st
 
@@ -58,6 +60,9 @@ from core.plotting.salinity import (
 )
 from core.plotting.streamflow_runs import compute_gauge_stats, plot_multirun_timeseries
 from core.plotting.water_balance import plot_annual_water_balance, plot_gw_sw_interaction
+
+# seconds between frames when the ET maps are playing
+PLAY_SPEEDS = {"Slow": 2.0, "Normal": 1.2, "Fast": 0.7}
 
 LAYERS = [
     ("Streamflow stations", "streamflow"),
@@ -384,20 +389,50 @@ def render_et_view(bundle, context) -> None:
         if not by_month.empty:
             step = st.radio("Time step", ["Annual", "Monthly"], horizontal=True, key="et_step")
 
+        ss = st.session_state
         if step == "Monthly":
             data, unit = by_month, "mm/month"
             months = sorted({(int(y), int(m)) for y, m in zip(data["year"], data["month"])})
-            labels = [f"{y}-{m:02d}" for y, m in months]
-            pick = st.select_slider("Month", options=labels, value="2015-07", key="et_map_month")
-            y, m = (int(x) for x in pick.split("-"))
-            spatial = data[(data["year"] == y) & (data["month"] == m)][["lat", "lon", "model_v52prod_mm", product]]
-            when = pick
-            note = "Drag the month to step through 2010–2024"
+            options = [f"{y}-{m:02d}" for y, m in months]
+            slider_label, slider_key, default = "Month", "et_map_month", "2015-07"
+            note = "Drag the month, or press Play, to step through 2010–2024"
         else:
             data, unit = by_year, "mm/yr"
-            years = sorted(by_year["year"].unique().tolist())
-            pick = st.select_slider("Year", options=[MEAN, *years], value=MEAN, key="et_map_year")
-            if pick == MEAN:
+            options = [MEAN, *sorted(by_year["year"].unique().tolist())]
+            slider_label, slider_key, default = "Year", "et_map_year", MEAN
+            note = "Drag the year, or press Play, to step through 2010–2024"
+        ss.setdefault(slider_key, default)
+        st.caption(
+            "The model's own ET (HRU + groundwater ET, production run) against a remote-sensing product at "
+            f"0.1° grid cells. {note}; colors keep one scale across the whole period. "
+            "In the difference map, green means the model evaporates more."
+        )
+
+        playing = bool(ss.get("et_playing", False))
+        c_play, c_speed, _ = st.columns([1, 1, 4])
+        if c_play.button("⏸ Pause" if playing else "▶ Play", key="et_play_btn", type="primary", width="stretch"):
+            ss["et_playing"] = not playing
+            ss["et_last_adv"] = time.time()
+            st.rerun()
+        speed = c_speed.selectbox("Speed", list(PLAY_SPEEDS), index=1, key="et_speed", label_visibility="collapsed")
+        interval = PLAY_SPEEDS[speed]
+
+        # The slider and the maps live in a fragment, so while playing only they refresh on a
+        # timer -- the rest of the page (and the region charts below) stay put.
+        @st.fragment(run_every=interval if playing else None)
+        def _et_maps():
+            if playing and time.time() - ss.get("et_last_adv", 0.0) >= interval * 0.8:
+                cur = ss.get(slider_key, default)
+                i = options.index(cur) if cur in options else 0
+                ss[slider_key] = options[(i + 1) % len(options)]
+                ss["et_last_adv"] = time.time()
+            pick = st.select_slider(slider_label, options=options, key=slider_key)
+
+            if step == "Monthly":
+                y, m = (int(x) for x in pick.split("-"))
+                spatial = data[(data["year"] == y) & (data["month"] == m)][["lat", "lon", "model_v52prod_mm", product]]
+                when = pick
+            elif pick == MEAN:
                 spatial = (
                     by_year[by_year["year"].between(2010, 2019)]
                     .groupby(["lat", "lon"], as_index=False)[["model_v52prod_mm", product]].mean()
@@ -406,32 +441,28 @@ def render_et_view(bundle, context) -> None:
             else:
                 spatial = by_year[by_year["year"] == pick][["lat", "lon", "model_v52prod_mm", product]]
                 when = str(pick)
-            note = "Drag the year to step through 2010–2024"
-        spatial = spatial.rename(columns={"model_v52prod_mm": "model_et_mm"}).dropna(subset=["model_et_mm"])
-        st.caption(
-            "The model's own ET (HRU + groundwater ET, production run) against a remote-sensing product at "
-            f"0.1° grid cells. {note}; colors keep one scale across the whole period. "
-            "In the difference map, green means the model evaporates more."
-        )
+            spatial = spatial.rename(columns={"model_v52prod_mm": "model_et_mm"}).dropna(subset=["model_et_mm"])
 
-        if spatial[product].notna().sum() == 0:
-            st.info(f"{label} has no usable values for {when}; the model map is shown on its own.")
-        diff = spatial.assign(diff_mm=spatial["model_et_mm"] - spatial[product])
-        cmax = float(data[["model_v52prod_mm", "ssebop_et_mm", "terraclimate_et_mm"]].max().max())
-        dbound = float((data["model_v52prod_mm"] - data[product]).abs().max())
+            if spatial[product].notna().sum() == 0:
+                st.info(f"{label} has no usable values for {when}; the model map is shown on its own.")
+            diff = spatial.assign(diff_mm=spatial["model_et_mm"] - spatial[product])
+            cmax = float(data[["model_v52prod_mm", "ssebop_et_mm", "terraclimate_et_mm"]].max().max())
+            dbound = float((data["model_v52prod_mm"] - data[product]).abs().max())
 
-        col_m, col_p, col_d = st.columns(3)
-        col_m.plotly_chart(plot_et_spatial_map(spatial, "model_et_mm", f"Model ET — {when}", shared_cmax=cmax, unit=unit), width="stretch", key="et_map_model")
-        col_p.plotly_chart(plot_et_spatial_map(spatial.dropna(subset=[product]) if spatial[product].notna().any() else spatial, product, f"{label} ET — {when}", shared_cmax=cmax, unit=unit), width="stretch", key="et_map_product")
-        col_d.plotly_chart(plot_et_spatial_map(diff.dropna(subset=["diff_mm"]) if diff["diff_mm"].notna().any() else diff, "diff_mm", f"Model − {label} — {when}", diverging=True, diverging_bound=dbound, unit=unit), width="stretch", key="et_map_diff")
+            col_m, col_p, col_d = st.columns(3)
+            col_m.plotly_chart(plot_et_spatial_map(spatial, "model_et_mm", f"Model ET — {when}", shared_cmax=cmax, unit=unit), width="stretch", key="et_map_model")
+            col_p.plotly_chart(plot_et_spatial_map(spatial.dropna(subset=[product]) if spatial[product].notna().any() else spatial, product, f"{label} ET — {when}", shared_cmax=cmax, unit=unit), width="stretch", key="et_map_product")
+            col_d.plotly_chart(plot_et_spatial_map(diff.dropna(subset=["diff_mm"]) if diff["diff_mm"].notna().any() else diff, "diff_mm", f"Model − {label} — {when}", diverging=True, diverging_bound=dbound, unit=unit), width="stretch", key="et_map_diff")
 
-        stats = compute_et_spatial_stats(spatial["model_et_mm"], spatial[product])
-        if stats:
-            a, b, c = st.columns(3)
-            a.metric("PBIAS", f"{stats['pbias']:.1f}%")
-            b.metric("R²", f"{stats['r2']:.2f}")
-            c.metric("RMSE", f"{stats['rmse']:.1f} mm")
-            st.caption(f"{when}: n = {stats['n']:,} grid cells — spatial pairs, not a time series.")
+            stats = compute_et_spatial_stats(spatial["model_et_mm"], spatial[product])
+            if stats:
+                a, b, c = st.columns(3)
+                a.metric("PBIAS", f"{stats['pbias']:.1f}%")
+                b.metric("R²", f"{stats['r2']:.2f}")
+                c.metric("RMSE", f"{stats['rmse']:.1f} mm")
+                st.caption(f"{when}: n = {stats['n']:,} grid cells — spatial pairs, not a time series.")
+
+        _et_maps()
 
     regions = read_et_regions(basin_dir)
     monthly = read_et_region_monthly(basin_dir)
