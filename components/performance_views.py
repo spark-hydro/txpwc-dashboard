@@ -21,7 +21,8 @@ from core.io.climate_reader import (
     read_et_spatial_by_year,
 )
 from core.io.gw_calibration_reader import read_gw_calibration_pairs, read_gw_calibration_wells
-from core.io.reservoir_reader import read_reservoirs_meta
+from components.data_download import Family, render_download_panel
+from core.io.reservoir_reader import read_reservoirs_meta, read_reservoirs_monthly
 from core.io.salinity_reader import read_salinity_sites
 from core.io.salinity_simulation_reader import (
     read_salinity_source_contrib,
@@ -205,6 +206,17 @@ def render_observation_view(bundle, context) -> None:
     st.caption(
         "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing."
     )
+
+    sal_series = pd.concat([
+        sal_obs.assign(source="observed", date=sal_obs["date"].astype(str)),
+        sal_sim.assign(source="simulated (annual)", date=sal_sim["year"].astype(str)).drop(columns="year"),
+    ], ignore_index=True)[["station", "site", "constituent", "source", "date", "value_mgL"]]
+    render_download_panel([
+        Family("streamflow", "Streamflow stations", gauges, flow_monthly, "id", "gauge_id", "label"),
+        Family("reservoirs", "Reservoirs", res_meta.drop(columns="flow_gage_id"), read_reservoirs_monthly(basin_dir), "dam_key", "dam_key", "name"),
+        Family("wells", "Groundwater wells", wells, gw_pairs, "id", "id"),
+        Family("salinity", "Salinity stations", sal_meta, sal_series, "site", "site", "station"),
+    ], basin=context.basin_id)
 
     # --- chart 1: streamflow + reservoir outlets
     st.divider()
