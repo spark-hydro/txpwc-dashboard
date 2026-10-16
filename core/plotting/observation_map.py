@@ -183,8 +183,8 @@ def plot_observation_map(
         # which sits off-centre for an elongated basin)
         fig.update_layout(map_center={"lat": (min(lats) + max(lats)) / 2, "lon": (min(lons) + max(lons)) / 2})
     fig.update_layout(
-        map_zoom=(zoom + 0.3) if zoom else zoom,
-        height=520,
+        map_zoom=(zoom + 0.7) if zoom else zoom,
+        height=680,
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, itemsizing="constant"),
     )

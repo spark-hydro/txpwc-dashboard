@@ -236,7 +236,7 @@ def render_observation_view(bundle, context) -> None:
         selected_gauge=ss["sel_gauge"], selected_well=ss["sel_well"], selected_salinity=ss["sel_salinity"],
         selected_subbasin=ss.get("sel_subbasin"),
     )
-    map_col, side_col = st.columns([4, 2])
+    map_col, side_col = st.columns([3, 2])
     with map_col:
         tool = st.segmented_control(
             "Map tool", options=["Pan / click", "Select box", "Select lasso"], default="Pan / click",
@@ -247,10 +247,11 @@ def render_observation_view(bundle, context) -> None:
             fig, width="stretch", on_select="rerun", selection_mode=("points", "box", "lasso"),
             config={"scrollZoom": True, "displayModeBar": True}, key=map_key,
         )
-        st.caption(
-            "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing. "
-            "To pick a group, switch the map tool to Select box or Select lasso and drag over the map: only the layers switched on are included."
-        )
+
+    st.caption(
+        "Click a point — or a subbasin — to chart it below. The highlighted ring and outline mark what the charts are showing. "
+        "To pick a group, switch the map tool to Select box or Select lasso and drag over the map: only the layers switched on are included."
+    )
 
     sal_series = pd.concat([
         sal_obs.assign(source="observed", date=sal_obs["date"].astype(str)),
