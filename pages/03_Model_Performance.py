@@ -23,7 +23,7 @@ st.markdown(
     """
     <style>
     .st-key-perf_view [data-testid="stButtonGroup"] { width: 100%; }
-    .st-key-perf_view button { flex: 1 1 0; min-height: 3.2rem; border-width: 1.5px; }
+    .st-key-perf_view button { flex: 1 1 0; min-width: 12.5rem; min-height: 3.2rem; border-width: 1.5px; }
     .st-key-perf_view button p { font-size: 1.05rem; font-weight: 700; white-space: normal; text-overflow: clip; overflow: visible; }
     .st-key-perf_view button[aria-checked="true"],
     .st-key-perf_view button[data-selected="true"],
