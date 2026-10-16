@@ -168,7 +168,7 @@ def plot_observation_map(
     zoom = fig.layout.map.zoom
     fig.update_layout(
         map_zoom=(zoom + 0.8) if zoom else zoom,
-        height=600,
+        height=520,
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, itemsizing="constant"),
     )

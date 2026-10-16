@@ -234,7 +234,7 @@ def render_observation_view(bundle, context) -> None:
         selected_gauge=ss["sel_gauge"], selected_well=ss["sel_well"], selected_salinity=ss["sel_salinity"],
         selected_subbasin=ss.get("sel_subbasin"),
     )
-    map_col, side_col = st.columns([5, 2])
+    map_col, side_col = st.columns([4, 2])
     with map_col:
         tool = st.segmented_control(
             "Map tool", options=["Pan / click", "Select box", "Select lasso"], default="Pan / click",

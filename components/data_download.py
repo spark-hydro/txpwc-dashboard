@@ -41,12 +41,12 @@ def render_download_panel(
     families: list[Family], basin: str = "Pecos", map_selection: dict[str, list[str]] | None = None,
 ) -> None:
     labels = {f.key: f.label for f in families}
-    st.subheader("Download data")
+    st.subheader(
+        "Download data",
+        help="Choose the families you want — all of them or any mix — then what to include. "
+        "One family and one table downloads as a CSV; anything larger comes as a ZIP of CSVs.",
+    )
     with st.container():
-        st.caption(
-            "Choose the families you want — all of them or any mix — then what to include. "
-            "One family and one table downloads as a CSV; anything larger comes as a ZIP of CSVs."
-        )
         picked_keys = st.multiselect(
             "Families", options=[f.key for f in families], default=[f.key for f in families],
             format_func=labels.get, key="dl_families",
@@ -95,10 +95,7 @@ def render_download_panel(
 
         rows = sum(len(df) for df in files.values())
         st.caption(f"{n_points:,} points · {len(files)} file{'s' if len(files) > 1 else ''} · {rows:,} rows")
-        st.dataframe(
-            pd.DataFrame({"File": list(files), "Rows": [len(df) for df in files.values()]}),
-            hide_index=True, width="stretch",
-        )
+        st.markdown("\n".join(f"- `{name}` · {len(df):,} rows" for name, df in files.items()))
         if len(files) == 1:
             (name, df), = files.items()
             st.download_button("Download CSV", _csv_bytes(df), file_name=name, mime="text/csv", key="dl_button_csv")
