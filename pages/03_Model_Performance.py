@@ -2,7 +2,12 @@ from types import SimpleNamespace
 
 import streamlit as st
 
-from components.performance_views import render_et_view, render_hydrology_view, render_observation_view
+from components.performance_views import (
+    render_et_view,
+    render_groundwater_view,
+    render_hydrology_view,
+    render_observation_view,
+)
 from components.sidebar import render_sidebar
 from config.settings import RESOURCES_DIR
 from core.io.txpwc_reader import get_basin_dir
@@ -18,6 +23,7 @@ st.caption("How the simulations compare with real observations, and what the mod
 OBSERVATIONS = "Observations"
 ET = "Evapotranspiration"
 HYDROLOGY = "Hydrologic responses"
+GROUNDWATER = "Groundwater & salinity"
 
 # The three views are the page's main navigation, so they get a heavier look than the
 # secondary controls (map tool, layer pickers) further down: equal widths, a taller
@@ -42,7 +48,7 @@ st.markdown(
 )
 
 view = st.segmented_control(
-    "View", options=[OBSERVATIONS, ET, HYDROLOGY], default=OBSERVATIONS,
+    "View", options=[OBSERVATIONS, ET, HYDROLOGY, GROUNDWATER], default=OBSERVATIONS,
     key="perf_view", label_visibility="collapsed",
 ) or OBSERVATIONS
 
@@ -54,5 +60,7 @@ if view == OBSERVATIONS:
     render_observation_view(light, context)
 elif view == ET:
     render_et_view(light, context)
+elif view == GROUNDWATER:
+    render_groundwater_view(light, context)
 else:
     render_hydrology_view(load_performance_bundle(context), context)
