@@ -100,7 +100,7 @@ def plot_station_obs_vs_sim(
     fig.update_layout(
         yaxis=dict(title=f"{CONSTITUENT_LABELS.get(constituent, constituent)} (mg/L, log scale)", type="log"),
         template="plotly_white",
-        margin=dict(l=20, r=20, t=20, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig

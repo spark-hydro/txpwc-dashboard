@@ -2,8 +2,9 @@
 
 Each layer is one named trace, so the legend hides/shows it instantly and a
 click can be routed back to its dataset by trace position (see layer_order).
-A "highlight" trace sits under the points and rings whatever is currently
-selected, so the map always shows which point the charts below are drawing.
+Each family has a "ring" trace under its points that circles whatever is currently selected, so the map
+always shows which point the charts below are drawing. The ring, the halo and the points of a family share a
+legend group, so hiding the family from the legend hides all three.
 
 Every point layer is drawn twice -- a white halo, then the coloured dot -- so
 the points stay readable over any subbasin colour. The map basemap has no
@@ -30,32 +31,41 @@ SUBBASIN_COLORSCALE = [[0.0, "#f7f4ec"], [0.5, "#e2d9c3"], [1.0, "#b9a982"]]
 
 POINT_LAYERS = ["streamflow", "reservoirs", "wells", "salinity"]
 
+# Red (simulated too shallow) to blue (too deep). The middle is a visible grey, not the white of the
+# stock red-blue scale: a well with almost no bias must still show up against its white halo.
+WELL_BIAS_SCALE = [
+    [0.0, "#b2182b"], [0.25, "#ef8a62"], [0.5, "#bdbdbd"], [0.75, "#67a9cf"], [1.0, "#2166ac"],
+]
+
 
 def expected_layer_order(enabled: set[str]) -> list[str]:
     """Trace order the map is built with, so a click's curve number can be
     checked against it before the figure exists."""
-    order = ["subbasins", "highlight"]
+    order = ["subbasins"]
     for key in POINT_LAYERS:
         if key in enabled:
-            order += [f"{key}_halo", key]
+            order += [f"{key}_ring", f"{key}_halo", key]
     return order + ["subbasin_outline"]
 
 
-def _highlight_trace(points: list[tuple[float, float]]) -> go.Scattermap:
-    lat = [p[0] for p in points]
-    lon = [p[1] for p in points]
+def _ring_trace(df: pd.DataFrame | None, group: str) -> go.Scattermap:
+    """Dark ring around the selected point of one family (empty when nothing of it is selected)."""
+    lat = df["lat"].tolist() if df is not None and len(df) else []
+    lon = df["lon"].tolist() if df is not None and len(df) else []
     return go.Scattermap(
         lat=lat, lon=lon, mode="markers",
         marker=dict(size=30, color="#111827", opacity=0.30),
-        hoverinfo="skip", showlegend=False, name="selected",
+        hoverinfo="skip", showlegend=False, name="selected", legendgroup=group,
     )
 
 
-def _halo(lat, lon, size) -> go.Scattermap:
+def _halo(lat, lon, size, group: str) -> go.Scattermap:
+    """White ring under a point layer. It shares the layer's legend group, so hiding the layer from the
+    legend hides its halos too (otherwise white dots would be left behind)."""
     return go.Scattermap(
         lat=lat, lon=lon, mode="markers",
         marker=dict(size=size, color=HALO_COLOR, opacity=0.95),
-        hoverinfo="skip", showlegend=False, name="halo",
+        hoverinfo="skip", showlegend=False, name="halo", legendgroup=group,
     )
 
 
@@ -80,56 +90,45 @@ def plot_observation_map(
     )
     layer_order = ["subbasins"]
 
-    ring: list[tuple[float, float]] = []
-    if gauges is not None and selected_gauge is not None:
-        row = gauges[gauges["id"] == selected_gauge]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-    if reservoirs is not None and selected_gauge is not None:
-        row = reservoirs[reservoirs["flow_gage_id"] == selected_gauge]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-    if wells is not None and selected_well is not None:
-        row = wells[wells["id"] == selected_well]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-    if salinity_stations is not None and selected_salinity is not None:
-        row = salinity_stations[salinity_stations["site"] == selected_salinity]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-
-    fig.add_trace(_highlight_trace(ring))
-    layer_order.append("highlight")
-
     if gauges is not None and not gauges.empty:
         extra = gauges["group"].eq("extra") if "group" in gauges else pd.Series(False, index=gauges.index)
         size = np.where(extra, 9, 14)
-        fig.add_trace(_halo(gauges["lat"], gauges["lon"], size + 5))
+        fig.add_trace(_ring_trace(gauges[gauges["id"] == selected_gauge] if selected_gauge is not None else None, "streamflow"))
+        layer_order.append("streamflow_ring")
+        fig.add_trace(_halo(gauges["lat"], gauges["lon"], size + 5, "streamflow"))
         layer_order.append("streamflow_halo")
         fig.add_trace(go.Scattermap(
             lat=gauges["lat"], lon=gauges["lon"], mode="markers",
             marker=dict(size=size, color=np.where(extra, EXTRA_STREAMFLOW_COLOR, STREAMFLOW_COLOR)),
             text=[f"{lbl}<br>USGS {i}" for lbl, i in zip(gauges["label"], gauges["id"])],
-            hovertemplate="%{text}<extra></extra>", name="Streamflow stations",
+            hovertemplate="%{text}<extra></extra>", name="Streamflow stations", legendgroup="streamflow",
         ))
         layer_order.append("streamflow")
 
     if reservoirs is not None and not reservoirs.empty:
-        fig.add_trace(_halo(reservoirs["lat"], reservoirs["lon"], 27))
+        fig.add_trace(_ring_trace(reservoirs[reservoirs["flow_gage_id"] == selected_gauge] if selected_gauge is not None else None, "reservoirs"))
+        layer_order.append("reservoirs_ring")
+        fig.add_trace(_halo(reservoirs["lat"], reservoirs["lon"], 27, "reservoirs"))
         layer_order.append("reservoirs_halo")
         fig.add_trace(go.Scattermap(
             lat=reservoirs["lat"], lon=reservoirs["lon"], mode="markers+text",
             marker=dict(size=21, color=RESERVOIR_COLOR),
             text=reservoirs["name"], textposition="top center", textfont=dict(size=11, color="#7c2d12"),
-            hovertemplate="%{text}<extra></extra>", name="Reservoirs",
+            hovertemplate="%{text}<extra></extra>", name="Reservoirs", legendgroup="reservoirs",
         ))
         layer_order.append("reservoirs")
 
     if wells is not None and not wells.empty:
         bias = wells["mean_bias_m"]
         size = 7 + np.minimum(9, bias.abs() / 5)
-        fig.add_trace(_halo(wells["lat"], wells["lon"], size + 4))
+        fig.add_trace(_ring_trace(wells[wells["id"] == selected_well] if selected_well is not None else None, "wells"))
+        layer_order.append("wells_ring")
+        fig.add_trace(_halo(wells["lat"], wells["lon"], size + 4, "wells"))
         layer_order.append("wells_halo")
         fig.add_trace(go.Scattermap(
             lat=wells["lat"], lon=wells["lon"], mode="markers",
             marker=dict(
-                size=size, color=bias, colorscale="RdBu",
+                size=size, color=bias, colorscale=WELL_BIAS_SCALE,
                 cmin=-60, cmax=60, showscale=True,
                 colorbar=dict(title="Well bias<br>sim − obs (m)", thickness=10, len=0.4, x=1.02, y=0.28, yanchor="middle"),
             ),
@@ -137,18 +136,20 @@ def plot_observation_map(
                 f"Well {i}<br>Mean bias (sim − obs): {b:+.1f} m<br>{n} well-years"
                 for i, b, n in zip(wells["id"], bias, wells["n_years"])
             ],
-            hovertemplate="%{text}<extra></extra>", name="Groundwater wells",
+            hovertemplate="%{text}<extra></extra>", name="Groundwater wells", legendgroup="wells",
         ))
         layer_order.append("wells")
 
     if salinity_stations is not None and not salinity_stations.empty:
-        fig.add_trace(_halo(salinity_stations["lat"], salinity_stations["lon"], 20))
+        fig.add_trace(_ring_trace(salinity_stations[salinity_stations["site"] == selected_salinity] if selected_salinity is not None else None, "salinity"))
+        layer_order.append("salinity_ring")
+        fig.add_trace(_halo(salinity_stations["lat"], salinity_stations["lon"], 20, "salinity"))
         layer_order.append("salinity_halo")
         fig.add_trace(go.Scattermap(
             lat=salinity_stations["lat"], lon=salinity_stations["lon"], mode="markers",
             marker=dict(size=15, color=SALINITY_COLOR),
             text=[f"{s}<br>USGS {i}" for s, i in zip(salinity_stations["station"], salinity_stations["site"])],
-            hovertemplate="%{text}<extra></extra>", name="Salinity stations",
+            hovertemplate="%{text}<extra></extra>", name="Salinity stations", legendgroup="salinity",
         ))
         layer_order.append("salinity")
 

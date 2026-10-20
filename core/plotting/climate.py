@@ -138,7 +138,7 @@ def plot_et_water_balance(df: pd.DataFrame) -> go.Figure:
         yaxis_title="mm / month",
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=60, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
@@ -174,7 +174,7 @@ def plot_et_region_monthly(monthly: pd.DataFrame, start_year: int = 2010) -> go.
         yaxis_title="Actual ET (mm/month)",
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=20, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
@@ -203,7 +203,7 @@ def plot_et_region_annual(annual: pd.DataFrame, start_year: int = 2010) -> go.Fi
         xaxis=dict(dtick=2),
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=20, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig

@@ -30,7 +30,7 @@ def plot_reservoir_timeseries(df: pd.DataFrame, dam_name: str) -> go.Figure:
         title=f"{dam_name} — Monthly Release &amp; Storage (2000–2020)",
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=60, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     fig.update_yaxes(title_text="Release (Mm³/mo)", secondary_y=False)

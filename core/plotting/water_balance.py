@@ -84,7 +84,7 @@ def plot_gw_sw_interaction(wb: pd.DataFrame) -> go.Figure:
         yaxis_title="mm/yr over the basin",
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=20, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
