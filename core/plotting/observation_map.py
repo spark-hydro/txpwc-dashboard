@@ -2,8 +2,9 @@
 
 Each layer is one named trace, so the legend hides/shows it instantly and a
 click can be routed back to its dataset by trace position (see layer_order).
-A "highlight" trace sits under the points and rings whatever is currently
-selected, so the map always shows which point the charts below are drawing.
+Each family has a "ring" trace under its points that circles whatever is currently selected, so the map
+always shows which point the charts below are drawing. The ring, the halo and the points of a family share a
+legend group, so hiding the family from the legend hides all three.
 
 Every point layer is drawn twice -- a white halo, then the coloured dot -- so
 the points stay readable over any subbasin colour. The map basemap has no
@@ -40,20 +41,21 @@ WELL_BIAS_SCALE = [
 def expected_layer_order(enabled: set[str]) -> list[str]:
     """Trace order the map is built with, so a click's curve number can be
     checked against it before the figure exists."""
-    order = ["subbasins", "highlight"]
+    order = ["subbasins"]
     for key in POINT_LAYERS:
         if key in enabled:
-            order += [f"{key}_halo", key]
+            order += [f"{key}_ring", f"{key}_halo", key]
     return order + ["subbasin_outline"]
 
 
-def _highlight_trace(points: list[tuple[float, float]]) -> go.Scattermap:
-    lat = [p[0] for p in points]
-    lon = [p[1] for p in points]
+def _ring_trace(df: pd.DataFrame | None, group: str) -> go.Scattermap:
+    """Dark ring around the selected point of one family (empty when nothing of it is selected)."""
+    lat = df["lat"].tolist() if df is not None and len(df) else []
+    lon = df["lon"].tolist() if df is not None and len(df) else []
     return go.Scattermap(
         lat=lat, lon=lon, mode="markers",
         marker=dict(size=30, color="#111827", opacity=0.30),
-        hoverinfo="skip", showlegend=False, name="selected",
+        hoverinfo="skip", showlegend=False, name="selected", legendgroup=group,
     )
 
 
@@ -88,26 +90,11 @@ def plot_observation_map(
     )
     layer_order = ["subbasins"]
 
-    ring: list[tuple[float, float]] = []
-    if gauges is not None and selected_gauge is not None:
-        row = gauges[gauges["id"] == selected_gauge]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-    if reservoirs is not None and selected_gauge is not None:
-        row = reservoirs[reservoirs["flow_gage_id"] == selected_gauge]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-    if wells is not None and selected_well is not None:
-        row = wells[wells["id"] == selected_well]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-    if salinity_stations is not None and selected_salinity is not None:
-        row = salinity_stations[salinity_stations["site"] == selected_salinity]
-        ring += [(r.lat, r.lon) for r in row.itertuples()]
-
-    fig.add_trace(_highlight_trace(ring))
-    layer_order.append("highlight")
-
     if gauges is not None and not gauges.empty:
         extra = gauges["group"].eq("extra") if "group" in gauges else pd.Series(False, index=gauges.index)
         size = np.where(extra, 9, 14)
+        fig.add_trace(_ring_trace(gauges[gauges["id"] == selected_gauge] if selected_gauge is not None else None, "streamflow"))
+        layer_order.append("streamflow_ring")
         fig.add_trace(_halo(gauges["lat"], gauges["lon"], size + 5, "streamflow"))
         layer_order.append("streamflow_halo")
         fig.add_trace(go.Scattermap(
@@ -119,6 +106,8 @@ def plot_observation_map(
         layer_order.append("streamflow")
 
     if reservoirs is not None and not reservoirs.empty:
+        fig.add_trace(_ring_trace(reservoirs[reservoirs["flow_gage_id"] == selected_gauge] if selected_gauge is not None else None, "reservoirs"))
+        layer_order.append("reservoirs_ring")
         fig.add_trace(_halo(reservoirs["lat"], reservoirs["lon"], 27, "reservoirs"))
         layer_order.append("reservoirs_halo")
         fig.add_trace(go.Scattermap(
@@ -132,6 +121,8 @@ def plot_observation_map(
     if wells is not None and not wells.empty:
         bias = wells["mean_bias_m"]
         size = 7 + np.minimum(9, bias.abs() / 5)
+        fig.add_trace(_ring_trace(wells[wells["id"] == selected_well] if selected_well is not None else None, "wells"))
+        layer_order.append("wells_ring")
         fig.add_trace(_halo(wells["lat"], wells["lon"], size + 4, "wells"))
         layer_order.append("wells_halo")
         fig.add_trace(go.Scattermap(
@@ -150,6 +141,8 @@ def plot_observation_map(
         layer_order.append("wells")
 
     if salinity_stations is not None and not salinity_stations.empty:
+        fig.add_trace(_ring_trace(salinity_stations[salinity_stations["site"] == selected_salinity] if selected_salinity is not None else None, "salinity"))
+        layer_order.append("salinity_ring")
         fig.add_trace(_halo(salinity_stations["lat"], salinity_stations["lon"], 20, "salinity"))
         layer_order.append("salinity_halo")
         fig.add_trace(go.Scattermap(

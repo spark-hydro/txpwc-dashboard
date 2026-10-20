@@ -570,7 +570,7 @@ def render_hydrology_view(bundle, context) -> None:
     c.metric("Stream → aquifer", f"{wb['swgw'].mean():.1f} mm/yr")
     d.metric("Net to the stream", f"{(wb['gwq'] - wb['swgw']).mean():+.1f} mm/yr")
 
-    st.subheader("Annual water balance")
+    st.subheader("Simulated annual water balance")
     st.plotly_chart(plot_annual_water_balance(wb), width="stretch", key="hyd_balance_chart")
 
     st.divider()
