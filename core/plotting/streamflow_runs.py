@@ -71,7 +71,7 @@ def plot_seasonal_shape(stats: dict, run_key: str, normalize: bool = False) -> g
     fig.update_layout(
         yaxis_title="flow ÷ own mean" if normalize else "m³/s",
         template="plotly_white",
-        margin=dict(l=20, r=20, t=20, b=20),
+        margin=dict(l=20, r=20, t=70, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
@@ -115,7 +115,7 @@ def plot_multirun_timeseries(
         xaxis=dict(tickangle=-45),
         template="plotly_white",
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=20, b=60),
+        margin=dict(l=20, r=20, t=70, b=60),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     return fig
