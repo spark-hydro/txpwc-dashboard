@@ -59,6 +59,10 @@ def _ring_trace(df: pd.DataFrame | None, group: str) -> go.Scattermap:
     )
 
 
+# Plotly draws map markers at 0.7 opacity unless told otherwise. Over a white halo that washes the colours
+# out (and the legend symbols with them), so every point layer below sets opacity=1 explicitly.
+
+
 def _halo(lat, lon, size, group: str) -> go.Scattermap:
     """White ring under a point layer. It shares the layer's legend group, so hiding the layer from the
     legend hides its halos too (otherwise white dots would be left behind)."""
@@ -99,7 +103,7 @@ def plot_observation_map(
         layer_order.append("streamflow_halo")
         fig.add_trace(go.Scattermap(
             lat=gauges["lat"], lon=gauges["lon"], mode="markers",
-            marker=dict(size=size, color=np.where(extra, EXTRA_STREAMFLOW_COLOR, STREAMFLOW_COLOR)),
+            marker=dict(size=size, color=np.where(extra, EXTRA_STREAMFLOW_COLOR, STREAMFLOW_COLOR), opacity=1),
             text=[f"{lbl}<br>USGS {i}" for lbl, i in zip(gauges["label"], gauges["id"])],
             hovertemplate="%{text}<extra></extra>", name="Streamflow stations", legendgroup="streamflow",
         ))
@@ -112,7 +116,7 @@ def plot_observation_map(
         layer_order.append("reservoirs_halo")
         fig.add_trace(go.Scattermap(
             lat=reservoirs["lat"], lon=reservoirs["lon"], mode="markers+text",
-            marker=dict(size=21, color=RESERVOIR_COLOR),
+            marker=dict(size=21, color=RESERVOIR_COLOR, opacity=1),
             text=reservoirs["name"], textposition="top center", textfont=dict(size=11, color="#7c2d12"),
             hovertemplate="%{text}<extra></extra>", name="Reservoirs", legendgroup="reservoirs",
         ))
@@ -128,7 +132,7 @@ def plot_observation_map(
         fig.add_trace(go.Scattermap(
             lat=wells["lat"], lon=wells["lon"], mode="markers",
             marker=dict(
-                size=size, color=bias, colorscale=WELL_BIAS_SCALE,
+                size=size, color=bias, colorscale=WELL_BIAS_SCALE, opacity=1,
                 cmin=-60, cmax=60, showscale=True,
                 colorbar=dict(title="Well bias<br>sim − obs (m)", thickness=10, len=0.4, x=1.02, y=0.28, yanchor="middle"),
             ),
@@ -147,7 +151,7 @@ def plot_observation_map(
         layer_order.append("salinity_halo")
         fig.add_trace(go.Scattermap(
             lat=salinity_stations["lat"], lon=salinity_stations["lon"], mode="markers",
-            marker=dict(size=15, color=SALINITY_COLOR),
+            marker=dict(size=15, color=SALINITY_COLOR, opacity=1),
             text=[f"{s}<br>USGS {i}" for s, i in zip(salinity_stations["station"], salinity_stations["site"])],
             hovertemplate="%{text}<extra></extra>", name="Salinity stations", legendgroup="salinity",
         ))
